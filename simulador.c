@@ -10,7 +10,7 @@ int main(int argc, char *argv[]){
         return 1;
     }
 
-   if(initial_config_simulador(argv[1]) == 1){
+   if(load_initial_config_simulador(argv[1]) == 1){
         printf("Programa teve de encerrar devido a um erro ao carregar o ficheiro de configuração ");
         printf("do simulador.\n");
         return 0;

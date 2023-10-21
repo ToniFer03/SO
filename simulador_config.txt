@@ -1,0 +1,5 @@
+teste1 = 10
+teste2 = 20
+teste3 = 30
+teste4 = 40
+teste5 = 50
