@@ -39,6 +39,8 @@ void parse_config_line(char *line, struct config_file_format *cfg) {
 
 
 int load_initial_config_simulador(char *argv){
+    int ptr[100] = {0}; //creates array of *int for the test 
+    int counter = 0; //initializes the counter for test also
     FILE *file;
 
     file = fopen(argv, "r"); //opens file on read mode
@@ -53,6 +55,7 @@ int load_initial_config_simulador(char *argv){
 
     //while the line on the file is not empty keep reading
     while(fgets(line, sizeof(line), file) != NULL) {
+
         // If the line is a newline character, break out of the loop
         if(strcmp(line, "\n") == 0) {
             break;
@@ -65,11 +68,14 @@ int load_initial_config_simulador(char *argv){
         parse_config_line(line, &cfg);
         if(strlen(cfg.key) > 0) {
             printf("%s = %s", cfg.key, cfg.value); // Removed '\n' from printf
+            ptr[counter] = atoi(cfg.value); //puts a copy of the value in the array, cast it to int
         }
+
+        counter = counter + 1; //for test also, increase the counter by one
     }
 
     if(feof(file)) { // Check if end of file was reached
-        printf("sucesso! \n"); //debugging line
+        printf("\nsucesso! \n"); //debugging line
     }
     
     fclose(file);
