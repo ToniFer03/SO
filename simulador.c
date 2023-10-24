@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "simulador.h"
 #include "leitor_ficheiros.h"
+#include "escrita_ficheiros.h"
 
 int main(int argc, char *argv[]){
 
@@ -15,6 +16,8 @@ int main(int argc, char *argv[]){
         printf("do simulador.\n");
         return 0;
    }
+
+   write_to_file();
 
     return 0;
 }
