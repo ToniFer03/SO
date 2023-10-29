@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include "escrita_ficheiros.h"
 
 int write_to_file() {
     FILE *file;
