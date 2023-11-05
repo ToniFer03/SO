@@ -12,7 +12,7 @@ int main() {
         printf("Good Connection \n");
         fflush(stdout); // Flush the output buffer to ensure the message is displayed
 
-        while (connection_status){
+        while (connection_status){ //while there is a connection continues
             connection_status = check_client_disconnect();
         }
         
