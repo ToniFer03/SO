@@ -22,7 +22,7 @@ int main(int argc, char *argv[]){
 
     connect_server();
 
-    while (1){
+    while (1){ //keep simulador running
     }
     
 

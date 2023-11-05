@@ -38,6 +38,7 @@ void server_socket_create() {
     }
 }
 
+//code to connect to the client
 int connect_client(){
     client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_addr_len);
     if (client_socket == -1) {
@@ -49,9 +50,8 @@ int connect_client(){
 }
 
 
+//checks if there is a connection, if there isnt returns 0 to exit the loop
 int check_client_disconnect(){
-    // Your program logic for a successful connection can go here
-
     char buffer[1024];
     int bytes_received = recv(client_socket, buffer, sizeof(buffer), 0);
 
