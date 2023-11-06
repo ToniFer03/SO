@@ -50,16 +50,31 @@ int connect_client(){
 }
 
 
-//checks if there is a connection, if there isnt returns 0 to exit the loop
-int check_client_disconnect(){
-    char buffer[1024];
-    int bytes_received = recv(client_socket, buffer, sizeof(buffer), 0);
+// Function to decode and handle messages
+void decode_message(int code) {
+    switch (code) {
+        case 100:
+            printf("A person was created.\n");
+            break;
+        // Add more cases for other message codes as needed
+        default:
+            printf("Unknown message code: %d\n", code);
+            break;
+    }
+}
+
+// Inside the check_client_disconnect function
+int check_client_disconnect() {
+    int code = 0;
+    int bytes_received = recv(client_socket, &code, sizeof(code), 0);
 
     if (bytes_received <= 0) {
         // The client has disconnected or an error occurred, so exit the loop
         printf("Client disconnected or an error occurred. Exiting the loop.\n");
         return 0;
     } else {
+        decode_message(code);
         return 1;
     }
 }
+

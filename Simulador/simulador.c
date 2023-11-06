@@ -1,9 +1,18 @@
 /* simulador.c */
 #include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <unistd.h>
 #include "simulador.h"
 #include "leitor_ficheiros.h"
 #include "escrita_ficheiros.h"
 #include "cliente.h"
+
+// Define a struct to hold the client socket
+struct ThreadArgs {
+    int client_socket;
+};
+
 
 int main(int argc, char *argv[]){
     /*
@@ -20,11 +29,40 @@ int main(int argc, char *argv[]){
     write_to_file();
     */
 
-    connect_server();
+    int client_socket = connect_server();
+
+    // Create a struct to hold the client socket pointer
+    struct ThreadArgs args;
+    args.client_socket = client_socket;
+
 
     while (1){ //keep simulador running
+        pthread_t person; //initialize pthread_t person
+
+        // Create a thread named "person"
+        if (pthread_create(&person, NULL, person_thread, &args) != 0) {
+            perror("Thread creation failed");
+            exit(1);
+        }
+
+        // Wait for the "person" thread to finish (you can add your logic here)
+
+        pthread_join(person, NULL);
     }
     
 
     return 0;
+}
+
+
+//code executed by the thread
+void* person_thread(void* arg) {
+    printf("Person thread created.\n");
+    int codeMessage = 100; //code that a person was created
+    int client_socket = *((int*)arg);
+
+    send_message(codeMessage, client_socket);
+    // Perform the behavior of the person here
+    sleep(3);
+    return NULL;
 }

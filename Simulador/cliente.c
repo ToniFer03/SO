@@ -9,7 +9,7 @@
 #include "cliente.h"
 
 
-void connect_server(){
+int connect_server(){
     int client_socket;
     struct sockaddr_in server_addr;
 
@@ -27,4 +27,14 @@ void connect_server(){
         perror("Connection failed");
         exit(1);
     }
+
+    return client_socket;
+}
+
+
+void send_message(int codeMessage, int client_socket) {
+    int code = codeMessage;
+
+    // Send the integer code to the server
+    int bytes_sent = send(client_socket, &code, sizeof(code), 0);
 }
