@@ -67,7 +67,7 @@ void* person_thread(void* arg) {
     int codeMessage = 100; //code that a person was created
     int client_socket = *((int*)arg);
 
-    send_message(codeMessage, client_socket);
+    //send_message(codeMessage, client_socket);
     
     switch (getRandomNumber(5)){
     case 0:
