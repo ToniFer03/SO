@@ -13,7 +13,6 @@ struct ThreadArgs {
     int client_socket;
 };
 
-
 int main(int argc, char *argv[]){
     /*
     if(argc < 2){
@@ -55,6 +54,13 @@ int main(int argc, char *argv[]){
 }
 
 
+//generates a random number between 0 and the limit
+int getRandomNumber(int limit){
+    srand(time(NULL));
+    return (rand()%limit);
+} 
+
+
 //code executed by the thread
 void* person_thread(void* arg) {
     printf("Person thread created.\n");
@@ -62,7 +68,27 @@ void* person_thread(void* arg) {
     int client_socket = *((int*)arg);
 
     send_message(codeMessage, client_socket);
-    // Perform the behavior of the person here
+    
+    switch (getRandomNumber(5)){
+    case 0:
+        send_message(110, client_socket);
+        break;
+    case 1:
+        send_message(120, client_socket);
+        break;
+    case 2:
+        send_message(130, client_socket);
+        break;
+    case 3:
+        send_message(140, client_socket);
+        break;
+    case 4:
+        send_message(150, client_socket);
+        break;
+    default:
+        break;
+    }
+
     sleep(3);
     return NULL;
 }

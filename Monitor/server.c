@@ -56,7 +56,21 @@ void decode_message(int code) {
         case 100:
             printf("A person was created.\n");
             break;
-        // Add more cases for other message codes as needed
+        case 110:
+            printf("The person is drinking coffee.\n");
+            break;
+        case 120:
+            printf("The person is taking a walk.\n");
+            break;
+        case 130:
+            printf("The person adopted a dog.\n");
+            break;
+        case 140:
+            printf("The person is sleeping.\n");
+            break;
+        case 150:
+            printf("The person is going to the beach.\n");
+            break;
         default:
             printf("Unknown message code: %d\n", code);
             break;
