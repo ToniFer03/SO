@@ -1,19 +1,23 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <time.h>
 #include "escrita_ficheiros.h"
+#include "simulador.h"
 
-int write_to_file() {
-    FILE *file;
+void logMessage(const char *filename, const char *level, const char *message) {
+    // Open the log file in append mode
+    FILE *file = fopen(filename, "a");
 
-    file = fopen("test_log.txt", "w");
-    srand(time(NULL)); //uses time as a seed to create a random number
+    if (file != NULL) {
+        // Get the current time
+        char timestamp[20];
+        getCurrentTimestamp(timestamp);
 
-    for (int i = 0; i < 5; i++) {
-        fprintf(file, "%d\n", rand()); //writes a random number on every line
+        // Write the log entry to the file
+        fprintf(file, "%s | %s | %s\n", timestamp, level, message);
+
+        // Close the file
+        fclose(file);
+    } else {
+        perror("Error opening log file");
     }
-
-    fclose(file);
-
-    return 0;
 }

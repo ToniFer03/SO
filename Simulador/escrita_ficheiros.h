@@ -1,7 +1,10 @@
 /* escrita_ficheiros.h */
-#ifndef LEITOR_CONFIG_SIMULADOR_H
-#define LEITOR_CONFIG_SIMULADOR_H
+#ifndef ESCRITA_FICHEIROS_H
+#define ESCRITA_FICHEIROS_H
 
-int write_to_file();
+#define ERROR "Error"
+#define ROUTINE "Routine"
+
+void logMessage(const char *filename, const char *level, const char *message);
 
 #endif

@@ -53,36 +53,25 @@ int connect_client(){
 // Function to decode and handle messages
 void decode_message(int code) {
     // Define static variables to keep track of counts
-    static int coffee_count = 0;
-    static int walk_count = 0;
-    static int adopted_dog_count = 0;
-    static int sleeping_count = 0;
-    static int beach_count = 0;
-
+    static int child = 0;
+    static int adult = 0;
+    static int elder = 0;
 
     switch (code) {
         case 100:
             printf("A person was created.                                                 \n");
             break;
         case 110:
-            printf("The person is drinking coffee.                                        \n");
-            coffee_count++;
+            printf("The person is a child.                                        \n");
+            child++;
             break;
         case 120:
-            printf("The person is taking a walk.                                          \n");
-            walk_count++;
+            printf("The person is an Adult.                                          \n");
+            adult++;
             break;
         case 130:
-            printf("The person adopted a dog.                                             \n");
-            adopted_dog_count++;
-            break;
-        case 140:
-            printf("The person is sleeping.                                               \n");
-            sleeping_count++;
-            break;
-        case 150:
-            printf("The person is going to the beach.                                     \n");
-            beach_count++;
+            printf("The person is an Elder.                                             \n");
+            elder++;
             break;
         default:
             printf("Unknown message code: %d                                              \n", code);
@@ -90,8 +79,8 @@ void decode_message(int code) {
     }
 
     // Print counts on the last line
-    printf("Coffee: %d, Walk: %d, Adopted Dog: %d, Sleeping: %d, Beach: %d \r", 
-        coffee_count, walk_count, adopted_dog_count, sleeping_count, beach_count);
+    printf("Child: %d, Adult: %d, Elder: %d \r", 
+        child, adult, elder);
 
     // Flush the output to ensure it's displayed immediately
     fflush(stdout);

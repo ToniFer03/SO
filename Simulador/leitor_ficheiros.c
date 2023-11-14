@@ -1,84 +1,45 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+#include "simulador.h"
 
-#define MAXBUF 1024 //defines the max size for the buffer as 1024
-#define DELIM " = " //the delimitation that separetes the value and the key
+#define MAX_LINE_LENGTH 100
+#define MAX_KEY_LENGTH 50
+#define MAX_VALUE_LENGTH 50
 
-
-//defines the date structure of config file being on the the type name = value
-struct config_file_format {
-   char key[MAXBUF]; //name given to that configuration
-   char value[MAXBUF]; //value given to that name
-};
-
-
-//receives the current line of the file as well as the cfg
-void parse_config_line(char *line, struct config_file_format *cfg) {
-    char *temp = strdup(line); //creates a duplicate of the string and returns a poiter to ir
-    char *token;
-
-    //receives a string and separates into tokens using the DELIM defined above
-    token = strtok(temp, DELIM); //gets the first part of the token
-    
-    //if the token is not null passes that value to the key
-    if(token != NULL) {
-        strncpy(cfg->key, token, MAXBUF);
+int readConfigFile(const char *filename, struct Simualador_config *Config){
+    FILE *file = fopen(filename, "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+        return 1; //returns 1 if a mistake appears
     }
 
-    //NULL tells it to start from where it stopped on the last call
-    token = strtok(NULL, DELIM); //gets the second part
-    
-    //if it is not NULL passes the value to the value
-    if(token != NULL) {
-        strncpy(cfg->value, token, MAXBUF);
-    }
-
-    free(temp); //clears the memory that it was pointing
-};
-
-
-int load_initial_config_simulador(char *argv){
-    int ptr[100] = {0}; //creates array of *int for the test 
-    int counter = 0; //initializes the counter for test also
-    FILE *file;
-
-    file = fopen(argv, "r"); //opens file on read mode
-
-    if(file == NULL){ //if it is null, returns 1 as error code
-        printf("Não foi possivel abrir o ficheiro %s!\n", argv);
-        return 1; 
-    }
-
-    char line[MAXBUF]; //give line a max size of MAXBUF
-    struct config_file_format cfg; //creates a cfg variable based on the struct defined
-
-    //while the line on the file is not empty keep reading
-    while(fgets(line, sizeof(line), file) != NULL) {
-
-        // If the line is a newline character, break out of the loop
-        if(strcmp(line, "\n") == 0) {
-            break;
+    char line[MAX_LINE_LENGTH];
+    while (fgets(line, sizeof(line), file) != NULL) {
+        // Remove newline character
+        size_t len = strlen(line);
+        if (len > 0 && line[len - 1] == '\n') {
+            line[len - 1] = '\0';
         }
 
-        // Clear the key and value fields
-        memset(cfg.key, 0, MAXBUF);
-        memset(cfg.value, 0, MAXBUF);
+        char key[MAX_KEY_LENGTH];
+        char value[MAX_VALUE_LENGTH];
 
-        parse_config_line(line, &cfg);
-        if(strlen(cfg.key) > 0) {
-            printf("%s = %s", cfg.key, cfg.value); // Removed '\n' from printf
-            ptr[counter] = atoi(cfg.value); //puts a copy of the value in the array, cast it to int
+        // Parse key and value, ignoring leading and trailing spaces
+        if (sscanf(line, " %49[^= ] = %49s ", key, value) == 2) {
+            // Check key and assign value
+            if (strcmp(key, "Probability_Being_Elder") == 0) {
+                Config->probability_being_elder = atof(value);
+            } else if (strcmp(key, "Probability_Being_Child") == 0) {
+                Config->probability_being_child = atof(value);
+            } else {
+                // Debugging: Print if key is not recognized
+                printf("Unrecognized key: %s\n", key);
+            }
         }
-
-        counter = counter + 1; //for test also, increase the counter by one
     }
 
-    if(feof(file)) { // Check if end of file was reached
-        printf("\nsucesso! \n"); //debugging line
-    }
-    
     fclose(file);
-    return 0; //returns if a success
+    return 0; //returns 0 if sucessfull
 }
-

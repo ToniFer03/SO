@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "cliente.h"
+#include "escrita_ficheiros.h"
 
 
 int connect_server(){

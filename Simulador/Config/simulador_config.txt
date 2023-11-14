@@ -1,6 +1,3 @@
-teste1 = 10
-teste2 = 20
-teste3 = 30
-teste4 = 40
-teste5 = 50
-valor = 5
+# Configurações das Pessoas
+Probability_Being_Elder = 23.6
+Probability_Being_Child = 24.6

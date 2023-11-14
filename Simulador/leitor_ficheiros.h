@@ -1,7 +1,7 @@
 /* leitor_ficheiros.h */
-#ifndef LEITOR_CONFIG_SIMULADOR_H
-#define LEITOR_CONFIG_SIMULADOR_H
+#ifndef LEITOR_FICHEIROS_H
+#define LEITOR_FICHEIROS_H
 
-int load_initial_config_simulador(char *argv);
+int readConfigFile(const char *filename, struct Simualador_config *Config); 
 
 #endif
