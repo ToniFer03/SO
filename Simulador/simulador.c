@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <time.h>
+#include <semaphore.h>
 #include "simulador.h"
 #include "leitor_ficheiros.h"
 #include "escrita_ficheiros.h"
@@ -11,7 +12,10 @@
 
 
 //Mutex
-pthread_mutex_t trinco_log;
+pthread_mutex_t trinco_log; //access to log file
+
+//semaphore
+sem_t entry_into_park; //entry into the park
 
 
 
@@ -37,10 +41,11 @@ int main(int argc, char *argv[]){
         return 0;
     }
     
-    
+    config.atraction_number = 5; //temporary while figuring out how to create dinamic mutex
     int client_socket = connect_server(); //get the client socket
 
     pthread_mutex_init(&trinco_log, NULL); //initialize the mutex
+    sem_init(&entry_into_park, 0, config.max_people_park); //initialize the semaphore
 
     // Create a struct to pass to the Thread
     struct ThreadArgs args;
@@ -87,6 +92,7 @@ int main(int argc, char *argv[]){
 
 
     pthread_mutex_destroy(&trinco_log);  //destroy the mutex
+    sem_destroy(&entry_into_park); //destroy semaphore
     return 0;
     
 }
@@ -127,12 +133,15 @@ int determineAgeGroup(double probability_elder, double probability_child, unsign
 }
 
 
+//function to manage the entry intro the atractions
+void manageAtractions(struct ThreadArgs * args){
+
+}
+
+
 //code executed by the thread
 void* person_thread(void* arg) {
     struct ThreadArgs* args = (struct ThreadArgs*)arg;  // Cast the argument to the appropriate structure
-    struct Person_info pessoa = args->pessoa;  // Passes the person info to thread struct
-    struct Simulador_config config = args->config; //Passes the config from simulador to the struct
-    
 
     // Writing to the log file the person was created
     pthread_mutex_lock(&trinco_log);
@@ -144,8 +153,15 @@ void* person_thread(void* arg) {
     srand(seed);
 
     // Generate a random faixa_etaria for each thread
-    pessoa.faixa_etaria = determineAgeGroup(config.probability_being_elder, config.probability_being_child, &seed);
+    args->pessoa.faixa_etaria = determineAgeGroup(args->config.probability_being_elder, args->config.probability_being_child, &seed);
 
+    sem_wait(&entry_into_park); //semaphore that handles how many people can enter the park
+    send_message(140, args->client_socket);
+    sleep(3);
+    sem_post(&entry_into_park);
+    send_message(150, args->client_socket);
+
+    /*
     // Use the pessoa information in your logic
     switch (pessoa.faixa_etaria) {
     case 0:
@@ -163,6 +179,7 @@ void* person_thread(void* arg) {
     default:
         break;
     }
+    */
 
     sleep(3);
     return NULL;

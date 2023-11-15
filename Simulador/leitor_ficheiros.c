@@ -37,7 +37,9 @@ int readConfigFile(const char *filename, struct Simulador_config *Config){
                 Config->simulation_duration = atoi(value);
             } else if (strcmp(key, "Time_being_simulated_(Hours)") == 0) {
                 Config->time_being_simulated = atoi(value);
-            } else {
+            } else if (strcmp(key, "Max_People_Park") == 0){ 
+                Config->max_people_park = atoi(value);
+            }else {
                 // Debugging: Print if key is not recognized
                 printf("Unrecognized key: %s\n", key);
             }

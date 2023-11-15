@@ -73,6 +73,12 @@ void decode_message(int code) {
             printf("The person is an Elder.                                             \n");
             elder++;
             break;
+        case 140:
+            printf("Entry into the park                                                 \n");
+            break;
+        case 150:
+            printf("Exited the park                                                      \n");
+            break;
         default:
             printf("Unknown message code: %d                                              \n", code);
             break;
