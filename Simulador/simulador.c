@@ -10,11 +10,16 @@
 #include "cliente.h"
 
 
+//Mutex
+pthread_mutex_t trinco_log;
+
+
+
 int main(int argc, char *argv[]){
 
     //create log text file name with the date and time from now
     char logFileName[30];  // Adjust the size as needed
-    snprintf(logFileName, sizeof(logFileName), "Logs/logfile_%s.txt", getCurrentTimestamp());
+    snprintf(logFileName, sizeof(logFileName), "Logs/logfile_%s.txt", getCurrentTimestamp()); //create name of log file
 
     //verify if an argument has been passed
     if(argc < 2){
@@ -23,7 +28,7 @@ int main(int argc, char *argv[]){
     }
 
     //create struct to hold the configuration
-    struct Simualador_config config;
+    struct Simulador_config config;
     
 
     //try to read the configuration for the simulator
@@ -31,34 +36,34 @@ int main(int argc, char *argv[]){
         logMessage(logFileName, ERROR ,"Erro de carregamento do ficheiro de Configuração!");
         return 0;
     }
-
-
-    // Use the configuration values
-    printf("Probability_Being_Elder: %.2f%%\n", config.probability_being_elder);
-    printf("Probability_Being_Child: %.2f%%\n", config.probability_being_child);
-
     
-    int client_socket = connect_server();
+    
+    int client_socket = connect_server(); //get the client socket
 
-    // Create a struct to hold the client socket pointer
+    pthread_mutex_init(&trinco_log, NULL); //initialize the mutex
+
+    // Create a struct to pass to the Thread
     struct ThreadArgs args;
     args.client_socket = client_socket;
     args.log_filename = logFileName;
+    args.config = config;
 
     //define time variables for the simulation
     time_t start_time = time(NULL);
     time_t current_time = start_time;
 
-    pthread_t person[MAX_NUM_THREADS];
-    
+
+    pthread_t person[MAX_NUM_THREADS]; // create the maximum number of threads
     int i;
     for(i = 0; i < MAX_NUM_THREADS; i++){
-        // Create a thread named "person"
+    // Create a thread named "person"
         if (pthread_create(person + i, NULL, person_thread, &args) != 0) { //check if there was an error
+            pthread_mutex_lock(&trinco_log);
             logMessage(logFileName, ERROR, "Thread creation failed");
+            pthread_mutex_unlock(&trinco_log);
             exit(1);
         }
-    }
+    }   
 
     for (i = 0; i < MAX_NUM_THREADS; i++) {
         // Wait for the thread to finish
@@ -74,14 +79,18 @@ int main(int argc, char *argv[]){
             snprintf(message, sizeof(message), "Thread finished with an error. Thread ID: %s", thread_id_str);
 
             // Log the error message with the thread ID
+            pthread_mutex_lock(&trinco_log);
             logMessage(logFileName, ERROR, message);
+            pthread_mutex_unlock(&trinco_log);
         }
     }
 
 
+    pthread_mutex_destroy(&trinco_log);  //destroy the mutex
     return 0;
     
 }
+
 
 // Function to get the current timestamp
 const char *getCurrentTimestamp() {
@@ -97,42 +106,57 @@ const char *getCurrentTimestamp() {
     return timestamp;
 }
 
+
 //generates a random number between 0 and the limit
 int getRandomNumber(int limit){
     return (rand()%limit);
 } 
 
 
+// Determines the age group for the person
+int determineAgeGroup(double probability_elder, double probability_child, unsigned int* seed) {
+    double randomValue = ((double)rand_r(seed) / RAND_MAX) * 100.0;
+
+    if (randomValue < probability_child) {
+        return 0;
+    } else if (randomValue < probability_child + probability_elder) {
+        return 2;
+    } else {
+        return 1;
+    }
+}
+
+
 //code executed by the thread
 void* person_thread(void* arg) {
-    // Cast the argument to the appropriate structure
-    struct ThreadArgs* args = (struct ThreadArgs*)arg;
+    struct ThreadArgs* args = (struct ThreadArgs*)arg;  // Cast the argument to the appropriate structure
+    struct Person_info pessoa = args->pessoa;  // Passes the person info to thread struct
+    struct Simulador_config config = args->config; //Passes the config from simulador to the struct
+    
 
-    // Extract information about the person
-    struct Person_info pessoa = args->Pessoa;
+    // Writing to the log file the person was created
+    pthread_mutex_lock(&trinco_log);
     logMessage(args->log_filename, ROUTINE, "Pessoa criada com sucesso");
-
+    pthread_mutex_unlock(&trinco_log);
 
     // Get a unique seed for the random number generator (e.g., thread ID or current time)
     unsigned int seed = (unsigned int)pthread_self();
-
-    // Seed the random number generator
     srand(seed);
 
     // Generate a random faixa_etaria for each thread
-    pessoa.faixa_etaria = getRandomNumber(3); // Assuming 3 age groups: CRIANCA, ADULTO, IDOSO
+    pessoa.faixa_etaria = determineAgeGroup(config.probability_being_elder, config.probability_being_child, &seed);
 
     // Use the pessoa information in your logic
     switch (pessoa.faixa_etaria) {
-    case CRIANCA:
+    case 0:
         // Handle behavior for children
         send_message(110, args->client_socket);
         break;
-    case ADULTO:
+    case 1:
         // Handle behavior for adults
         send_message(120, args->client_socket);
         break;
-    case IDOSO:
+    case 2:
         // Handle behavior for the elderly
         send_message(130, args->client_socket);
         break;

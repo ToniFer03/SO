@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 #include "escrita_ficheiros.h"
 #include "simulador.h"
 
@@ -10,14 +11,27 @@ void logMessage(const char *filename, const char *level, const char *message) {
     if (file != NULL) {
         // Get the current time
         char timestamp[20];
-        getCurrentTimestamp(timestamp);
+        char formated_timestamp[20];
+        strcpy(timestamp, getCurrentTimestamp());
+
+        transformDateString(timestamp, formated_timestamp);
 
         // Write the log entry to the file
-        fprintf(file, "%s | %s | %s\n", timestamp, level, message);
+        fprintf(file, "%s | %s | %s\n", formated_timestamp, level, message);
 
         // Close the file
         fclose(file);
     } else {
         perror("Error opening log file");
     }
+}
+
+void transformDateString(char *input, char *output) {
+    int year, month, day, hour, minute, second;
+    
+    // Parse the input string
+    sscanf(input, "%4d%2d%2d%2d%2d%2d", &year, &month, &day, &hour, &minute, &second);
+
+    // Format the output string
+    sprintf(output, "%04d-%02d-%02d at %02d:%02d:%02d", year, month, day, hour, minute, second);
 }

@@ -2,7 +2,7 @@
 #ifndef SIMULADOR_H
 #define SIMULADOR_H
 
-#define MAX_NUM_THREADS 1000
+#define MAX_NUM_THREADS 10000
 
 // Define enum values
 enum Faixa_etaria {
@@ -12,9 +12,11 @@ enum Faixa_etaria {
 };
 
 //define struct that contains the config information
-struct Simualador_config{
+struct Simulador_config{
     double probability_being_elder;
     double probability_being_child;
+    int simulation_duration;
+    int time_being_simulated;
 };
 
 // Define a struct to hold person information
@@ -26,13 +28,11 @@ struct Person_info {
 struct ThreadArgs {
     int client_socket;
     char *log_filename;
-    struct Person_info Pessoa;
+    struct Simulador_config config;
+    struct Person_info pessoa;
 };
 
-// Function executed by the thread
-void* person_thread(void* arg);
-
-//Function to get the timestamp from now in char
-const char *getCurrentTimestamp();
+void* person_thread(void* arg); // Function executed by the thread
+const char *getCurrentTimestamp(); //Function to get the timestamp from now in char
 
 #endif

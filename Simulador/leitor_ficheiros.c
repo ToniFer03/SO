@@ -7,7 +7,7 @@
 #define MAX_KEY_LENGTH 50
 #define MAX_VALUE_LENGTH 50
 
-int readConfigFile(const char *filename, struct Simualador_config *Config){
+int readConfigFile(const char *filename, struct Simulador_config *Config){
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
         perror("Error opening file");
@@ -33,6 +33,10 @@ int readConfigFile(const char *filename, struct Simualador_config *Config){
                 Config->probability_being_elder = atof(value);
             } else if (strcmp(key, "Probability_Being_Child") == 0) {
                 Config->probability_being_child = atof(value);
+            } else if (strcmp(key, "Simulation_duration_(seconds)") == 0) {
+                Config->simulation_duration = atoi(value);
+            } else if (strcmp(key, "Time_being_simulated_(Hours)") == 0) {
+                Config->time_being_simulated = atoi(value);
             } else {
                 // Debugging: Print if key is not recognized
                 printf("Unrecognized key: %s\n", key);

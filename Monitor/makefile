@@ -1,5 +1,7 @@
 monitor: monitor.o server.o
 	gcc -g -lpthread monitor.o server.o -o monitor
+	make clean
+	./monitor
 
 monitor.o: monitor.c monitor.h server.h
 	gcc -g -c monitor.c

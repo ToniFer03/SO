@@ -6,5 +6,6 @@
 #define ROUTINE "Routine"
 
 void logMessage(const char *filename, const char *level, const char *message);
+void transformDateString(char *input, char *output);
 
 #endif
