@@ -21,7 +21,7 @@ sem_t entry_into_park; //entry into the park
 
 int main(int argc, char *argv[]){
 
-    //create log text file name with the date and time from now
+    //create log text file eith the name containig date and time from now
     char logFileName[30];  // Adjust the size as needed
     snprintf(logFileName, sizeof(logFileName), "Logs/logfile_%s.txt", getCurrentTimestamp()); //create name of log file
 
@@ -54,12 +54,18 @@ int main(int argc, char *argv[]){
     args.config = config;
 
     //define time variables for the simulation
-    time_t start_time = time(NULL);
+    time_t start_time = time(NULL); 
     time_t current_time = start_time;
 
 
     pthread_t person[MAX_NUM_THREADS]; // create the maximum number of threads
     int i;
+    /*
+        This loop will be in charge of creating the number of threads at the beggining,
+        the MAX_NUM_THREADS is defined in the header file of simulador. In case there is an error it
+        will use the logMessage to print that there was an error.
+        Also uses Mutex to make sure only a thread at a time has access to the file
+    */
     for(i = 0; i < MAX_NUM_THREADS; i++){
     // Create a thread named "person"
         if (pthread_create(person + i, NULL, person_thread, &args) != 0) { //check if there was an error
@@ -70,6 +76,11 @@ int main(int argc, char *argv[]){
         }
     }   
 
+    /*
+        This second loop is in charge of closing the threads down, if everythings goes down fine it will
+        not do anything. In case there is an error follow a similar logic to the one above and prints
+        that there was an error, aswell as the number of the thread responsible for it
+    */
     for (i = 0; i < MAX_NUM_THREADS; i++) {
         // Wait for the thread to finish
         if (pthread_join(person[i], NULL) != 0) {
@@ -98,7 +109,10 @@ int main(int argc, char *argv[]){
 }
 
 
-// Function to get the current timestamp
+/*
+    Function responsible getting the current time and date, for the log file name 
+    and every entry of it. So that we can now when everything happened
+*/
 const char *getCurrentTimestamp() {
     static char timestamp[20];
     time_t rawtime;
@@ -113,57 +127,67 @@ const char *getCurrentTimestamp() {
 }
 
 
-//generates a random number between 0 and the limit
+/*
+    Function responsible for generating a random Number between 0 and a specific number
+    that we send to the funcion
+*/
 int getRandomNumber(int limit){
     return (rand()%limit);
 } 
 
+/*
+    This function is used to determine the age of a certain person based on the probabilities
+    that where writen on the config file. It receives as pointers the args, that contain the 
+    simulator config that was read from the file and a Struct of type Person_info where it 
+    will set the faixa_etaria on it (an enum type of Child = 0, Adult = 1, and Elder = 2)
+    at random based on the probabilities given
+*/
+void determineAgeGroup(struct ThreadArgs * args, struct Person_info * pessoa_thread){
+    double randomValue = ((double)rand() / RAND_MAX) * 100.0;
 
-// Determines the age group for the person
-int determineAgeGroup(double probability_elder, double probability_child, unsigned int* seed) {
-    double randomValue = ((double)rand_r(seed) / RAND_MAX) * 100.0;
-
-    if (randomValue < probability_child) {
-        return 0;
-    } else if (randomValue < probability_child + probability_elder) {
-        return 2;
+    if (randomValue < args->config.probability_being_child){
+        pessoa_thread->faixa_etaria = 0;
+    } else if (randomValue < args->config.probability_being_elder + args->config.probability_being_child){
+        pessoa_thread->faixa_etaria = 2;
     } else {
-        return 1;
+        pessoa_thread->faixa_etaria = 1;
     }
-}
+};
 
 
 //function to manage the entry intro the atractions
 void manageAtractions(struct ThreadArgs * args){
-
+    
 }
 
 
-//code executed by the thread
-void* person_thread(void* arg) {
+/*
+    The code in here represents everything that will be executed by the threads. It receives 
+    an argument of the struct type ThreadArg, that contains the simulator config as well as 
+    the name of the log files to be writen and the client socket to be able to send messages
+*/
+void* person_thread(void *arg) {
     struct ThreadArgs* args = (struct ThreadArgs*)arg;  // Cast the argument to the appropriate structure
+    struct Person_info pessoa_thread; //Create the person_info to hold information about the person
+
 
     // Writing to the log file the person was created
-    pthread_mutex_lock(&trinco_log);
+    pthread_mutex_lock(&trinco_log); 
     logMessage(args->log_filename, ROUTINE, "Pessoa criada com sucesso");
     pthread_mutex_unlock(&trinco_log);
 
-    // Get a unique seed for the random number generator (e.g., thread ID or current time)
+    /*
+        This part of the code creates a unique seed for every thread so that every 
+        each time one of them calls rand it gives a different result. The seed is the thread_id
+        so that it is different on every thread
+    */
     unsigned int seed = (unsigned int)pthread_self();
     srand(seed);
 
-    // Generate a random faixa_etaria for each thread
-    args->pessoa.faixa_etaria = determineAgeGroup(args->config.probability_being_elder, args->config.probability_being_child, &seed);
+    determineAgeGroup(args, &pessoa_thread); //Call the function to assign the person an age group
 
-    sem_wait(&entry_into_park); //semaphore that handles how many people can enter the park
-    send_message(140, args->client_socket);
-    sleep(3);
-    sem_post(&entry_into_park);
-    send_message(150, args->client_socket);
-
-    /*
-    // Use the pessoa information in your logic
-    switch (pessoa.faixa_etaria) {
+    // Use the pessoa information in your logic (This is just for testing)
+    switch (pessoa_thread.faixa_etaria) {
     case 0:
         // Handle behavior for children
         send_message(110, args->client_socket);
@@ -179,9 +203,14 @@ void* person_thread(void* arg) {
     default:
         break;
     }
-    */
 
+    //Test the semaphore that will only let 200 people enter the park at a single time
+    sem_wait(&entry_into_park);
+    send_message(140, args->client_socket); //Message that a person entered the park
     sleep(3);
+    sem_post(&entry_into_park);
+    send_message(150, args->client_socket); //Message that a person left the park
+
     return NULL;
 }
 

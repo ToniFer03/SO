@@ -4,12 +4,18 @@
 #include "escrita_ficheiros.h"
 #include "simulador.h"
 
+
+/*
+    This function is responsible for writing to the log files. Receives the name
+    of the file that it needs to write, the level of the message (if it is an ERROR,
+    ROUTINE, ETC) and the message to be written to the file
+*/
 void logMessage(const char *filename, const char *level, const char *message) {
     // Open the log file in append mode
     FILE *file = fopen(filename, "a");
 
     if (file != NULL) {
-        // Get the current time
+        // Get the current time, for the message
         char timestamp[20];
         char formated_timestamp[20];
         strcpy(timestamp, getCurrentTimestamp());
@@ -26,6 +32,12 @@ void logMessage(const char *filename, const char *level, const char *message) {
     }
 }
 
+
+/*
+    This function is responsible for getting the string of the current time on the format
+    20231105150523 (AAAAMMDDHHMMSS) and transforming in a string that is easier to read
+    on the log file
+*/
 void transformDateString(char *input, char *output) {
     int year, month, day, hour, minute, second;
     

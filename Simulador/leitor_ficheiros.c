@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "leitor_ficheiros.h"
 #include "simulador.h"
 
-#define MAX_LINE_LENGTH 100
-#define MAX_KEY_LENGTH 50
-#define MAX_VALUE_LENGTH 50
-
+/*
+    This function is responsible for reading the configuration file that contains the essential
+    information when running the program. Its use, and how can be easily changed can be found on the 
+    read me file.
+*/
 int readConfigFile(const char *filename, struct Simulador_config *Config){
     FILE *file = fopen(filename, "r");
     if (file == NULL) {

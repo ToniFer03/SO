@@ -12,7 +12,10 @@ int client_socket; // Declare client_socket at the file scope
 struct sockaddr_in server_addr, client_addr; // Store information about sockets
 socklen_t client_addr_len; // Store the size of the client address
 
-
+/*
+    This function is responsible for creating a socket server to be able to communicate with
+    other processes
+*/
 void server_socket_create() {
     // Creates a new socket with an IPv4 address
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -38,7 +41,10 @@ void server_socket_create() {
     }
 }
 
-//code to connect to the client
+
+/*
+    This function is responsible for connecting to a client when receiving a request to connect
+*/
 int connect_client(){
     client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_addr_len);
     if (client_socket == -1) {
@@ -50,7 +56,10 @@ int connect_client(){
 }
 
 
-// Function to decode and handle messages
+/*
+    This function is responsible for decoding the messages that it receives, receives an argument of type int
+    and checks the code in a switch to check what kind of action need to be taken.
+*/
 void decode_message(int code) {
     // Define static variables to keep track of counts
     static int child = 0;
@@ -62,15 +71,12 @@ void decode_message(int code) {
             printf("A person was created.                                                 \n");
             break;
         case 110:
-            printf("The person is a child.                                        \n");
             child++;
             break;
         case 120:
-            printf("The person is an Adult.                                          \n");
             adult++;
             break;
         case 130:
-            printf("The person is an Elder.                                             \n");
             elder++;
             break;
         case 140:
@@ -84,7 +90,7 @@ void decode_message(int code) {
             break;
     }
 
-    // Print counts on the last line
+    // Print counts on the last line, \r makes it so that the cursor goes to the first line
     printf("Child: %d, Adult: %d, Elder: %d \r", 
         child, adult, elder);
 
@@ -93,13 +99,17 @@ void decode_message(int code) {
 }
 
 
-// Inside the check_client_disconnect function
+/*
+    Function responsible for receiving messages for the other process, and check if 
+    the other process disconnected
+*/
 int check_client_disconnect() {
     int code = 0;
     int bytes_received = recv(client_socket, &code, sizeof(code), 0);
 
     if (bytes_received <= 0) {
         // The client has disconnected or an error occurred, so exit the loop
+        printf("\n");
         printf("Client disconnected or an error occurred. Exiting the loop.\n");
         return 0;
     } else {

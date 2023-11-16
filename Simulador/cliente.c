@@ -10,6 +10,9 @@
 #include "escrita_ficheiros.h"
 
 
+/*
+    Function responsible for connection to the server
+*/
 int connect_server(){
     int client_socket;
     struct sockaddr_in server_addr;
@@ -29,10 +32,14 @@ int connect_server(){
         exit(1);
     }
 
-    return client_socket;
+    return client_socket; //returns the client socket so that it can send messages
 }
 
 
+/*
+    Funtion responsible for sending the codes for the server to decode. It receives the code to be send
+    (and INT) and the socket to send it too.
+*/
 void send_message(int codeMessage, int client_socket) {
     int code = codeMessage;
 
