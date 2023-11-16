@@ -4,32 +4,40 @@
 #include "simulador.h"
 #include "escrita_ficheiros.h"
 
+/*
+    Function to open a file
+*/
+FILE* openFile(const char *filename){
+    //Open the log file
+    FILE *file = fopen(filename, "a");
+    return file;
+}
+
+
+/*
+    Funtion that receives an argument of the type FILE and closes it
+*/
+void closeFile(FILE* file){
+    fclose(file);
+}
 
 /*
     This function is responsible for writing to the log files. Receives the name
     of the file that it needs to write, the level of the message (if it is an ERROR,
     ROUTINE, ETC) and the message to be written to the file
 */
-void logMessage(const char *filename, const char *level, const char *message) {
-    // Open the log file in append mode
-    FILE *file = fopen(filename, "a");
+void logMessage(FILE* file, const char *level, const char *message) {
+    // Get the current time, for the message
+    char timestamp[20];
+    char formated_timestamp[20];
+    strcpy(timestamp, getCurrentTimestamp());
 
-    if (file != NULL) {
-        // Get the current time, for the message
-        char timestamp[20];
-        char formated_timestamp[20];
-        strcpy(timestamp, getCurrentTimestamp());
+    transformDateString(timestamp, formated_timestamp);
 
-        transformDateString(timestamp, formated_timestamp);
+    // Write the log entry to the file
+    fprintf(file, "%s | %s | %s\n", formated_timestamp, level, message);
 
-        // Write the log entry to the file
-        fprintf(file, "%s | %s | %s\n", formated_timestamp, level, message);
 
-        // Close the file
-        fclose(file);
-    } else {
-        perror("Error opening log file");
-    }
 }
 
 

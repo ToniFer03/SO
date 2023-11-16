@@ -33,7 +33,7 @@ struct Person_info {
 // Define a struct to hold the client socket and person information
 struct ThreadArgs {
     int client_socket;
-    char *log_filename;
+    FILE* logfile;
     struct Simulador_config config;
 };
 

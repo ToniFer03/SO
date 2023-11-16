@@ -7,7 +7,9 @@
 
 
 //Definition of functions
-void logMessage(const char *filename, const char *level, const char *message);
+FILE* openFile(const char *filename);
+void closeFile(FILE* file);
+void logMessage(FILE* file, const char *level, const char *message);
 void transformDateString(char *input, char *output);
 
 #endif

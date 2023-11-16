@@ -11,9 +11,6 @@
 #include "cliente.h"
 
 
-//Mutex
-pthread_mutex_t trinco_log; //access to log file
-
 //semaphore
 sem_t entry_into_park; //entry into the park
 
@@ -22,12 +19,14 @@ sem_t entry_into_park; //entry into the park
 int main(int argc, char *argv[]){
 
     //create log text file eith the name containig date and time from now
-    char logFileName[30];  // Adjust the size as needed
+    char logFileName[40];  // Adjust the size as needed
     snprintf(logFileName, sizeof(logFileName), "Logs/logfile_%s.txt", getCurrentTimestamp()); //create name of log file
+
+    FILE* logfile = openFile(logFileName); //function to open the logfile
 
     //verify if an argument has been passed
     if(argc < 2){
-        logMessage(logFileName, ERROR ,"Não foi passado o argumento de ficheiro de Configuração!");
+        logMessage(logfile, ERROR ,"Não foi passado o argumento de ficheiro de Configuração!");
         return 1;
     }
 
@@ -37,20 +36,19 @@ int main(int argc, char *argv[]){
 
     //try to read the configuration for the simulator
     if (readConfigFile(argv[1], &config) == 1) {
-        logMessage(logFileName, ERROR ,"Erro de carregamento do ficheiro de Configuração!");
+        logMessage(logfile, ERROR ,"Erro de carregamento do ficheiro de Configuração!");
         return 0;
     }
     
-    config.atraction_number = 5; //temporary while figuring out how to create dinamic mutex
+    config.atraction_number = 3; //temporary while figuring out how to create dinamic mutex
     int client_socket = connect_server(); //get the client socket
 
-    pthread_mutex_init(&trinco_log, NULL); //initialize the mutex
     sem_init(&entry_into_park, 0, config.max_people_park); //initialize the semaphore
 
     // Create a struct to pass to the Thread
     struct ThreadArgs args;
     args.client_socket = client_socket;
-    args.log_filename = logFileName;
+    args.logfile = logfile;
     args.config = config;
 
     //define time variables for the simulation
@@ -69,9 +67,7 @@ int main(int argc, char *argv[]){
     for(i = 0; i < MAX_NUM_THREADS; i++){
     // Create a thread named "person"
         if (pthread_create(person + i, NULL, person_thread, &args) != 0) { //check if there was an error
-            pthread_mutex_lock(&trinco_log);
-            logMessage(logFileName, ERROR, "Thread creation failed");
-            pthread_mutex_unlock(&trinco_log);
+            logMessage(logfile, ERROR, "Thread creation failed");
             exit(1);
         }
     }   
@@ -95,14 +91,12 @@ int main(int argc, char *argv[]){
             snprintf(message, sizeof(message), "Thread finished with an error. Thread ID: %s", thread_id_str);
 
             // Log the error message with the thread ID
-            pthread_mutex_lock(&trinco_log);
-            logMessage(logFileName, ERROR, message);
-            pthread_mutex_unlock(&trinco_log);
+            logMessage(logfile, ERROR, message);
         }
     }
 
 
-    pthread_mutex_destroy(&trinco_log);  //destroy the mutex
+    closeFile(logfile);
     sem_destroy(&entry_into_park); //destroy semaphore
     return 0;
     
@@ -172,9 +166,7 @@ void* person_thread(void *arg) {
 
 
     // Writing to the log file the person was created
-    pthread_mutex_lock(&trinco_log); 
-    logMessage(args->log_filename, ROUTINE, "Pessoa criada com sucesso");
-    pthread_mutex_unlock(&trinco_log);
+    logMessage(args->logfile, ROUTINE, "Pessoa criada com sucesso");
 
     /*
         This part of the code creates a unique seed for every thread so that every 
