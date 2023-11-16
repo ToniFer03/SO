@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
-#include "escrita_ficheiros.h"
 #include "simulador.h"
+#include "escrita_ficheiros.h"
 
 
 /*

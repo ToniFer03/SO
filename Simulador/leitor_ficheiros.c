@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "leitor_ficheiros.h"
 #include "simulador.h"
+#include "leitor_ficheiros.h"
+
 
 /*
     This function is responsible for reading the configuration file that contains the essential
