@@ -1,6 +1,6 @@
 # Configurações das Pessoas
-Probability_Being_Elder = 14.8
-Probability_Being_Child = 21.1
+Probability_Being_Elder = 33.3
+Probability_Being_Child = 33.3
 
 #Configuração da Simulação
 Simulation_duration_(seconds) = 60

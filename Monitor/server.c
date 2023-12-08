@@ -94,6 +94,15 @@ void decode_message(int code)
     case 150:
         printf("Exited the park                                                      \n");
         break;
+    case 160:
+        printf("Criança entrou no escorrega                                           \n");
+        break;
+    case 170:
+        printf("Adulto entrou no escorrega                                           \n");
+        break;
+    case 180:
+        printf("Idoso entrou no escorrega                                           \n");
+        break;
     default:
         printf("Unknown message code: %d                                              \n", code);
         break;
