@@ -56,6 +56,14 @@ int readConfigFile(const char *filename, struct Simulador_config *Config)
             {
                 Config->max_people_park = atoi(value);
             }
+            else if (strcmp(key, "Max_People_Toboggan") == 0)
+            {
+            	Config->max_people_toboggan = atoi(value);
+            }
+            else if (strcmp(key, "Max_People_Snack_Bar") == 0)
+            {
+            	Config->max_people_snack_bar = atoi(value);
+            }
             else
             {
                 // Debugging: Print if key is not recognized

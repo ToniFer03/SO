@@ -6,3 +6,5 @@ Probability_Being_Child = 33.3
 Simulation_duration_(seconds) = 60
 Time_being_simulated_(Hours) = 8
 Max_People_Park = 200
+Max_People_Toboggan = 50
+Max_People_Snack_Bar = 30

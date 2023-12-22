@@ -48,33 +48,19 @@ void server_socket_create()
 }
 
 /*
-    This function is responsible for connecting to a client when receiving a request to connect
-*/
-int connect_client()
-{
-    client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_addr_len);
-    if (client_socket == -1)
-    {
-        return -1;
-    }
-    else
-    {
-        return 1;
-    }
-}
-
-/*
     This function is responsible for decoding the messages that it receives, receives an argument of type int
     and checks the code in a switch to check what kind of action need to be taken.
 */
-void decode_message(int code)
+void decode_message(int code[2])
 {
     // Define static variables to keep track of counts
     static int child = 0;
     static int adult = 0;
     static int elder = 0;
+    static int toboggan = 0;
+    static int snack_bar = 0;
 
-    switch (code)
+    switch (code[0])
     {
     case 100:
         printf("A person was created.                                                 \n");
@@ -89,28 +75,34 @@ void decode_message(int code)
         elder++;
         break;
     case 140:
-        printf("Entry into the park                                                 \n");
+        printf("Entry into the park (%d)                                                 \n", code[1]);
         break;
     case 150:
-        printf("Exited the park                                                      \n");
+        printf("Exited the park (%d)                                                     \n", code[1]);
         break;
     case 160:
-        printf("Criança entrou no escorrega                                           \n");
+        printf("Criança (Pessoa %d) entrou no escorrega                                           \n", code[1]);
         break;
     case 170:
-        printf("Adulto entrou no escorrega                                           \n");
+        printf("Adulto (Pessoa %d) entrou no escorrega                                           \n", code[1]);
         break;
     case 180:
-        printf("Idoso entrou no escorrega                                           \n");
+        printf("Idoso (Pessoa %d) entrou no escorrega                                           \n", code[1]);
         break;
+    case 190:
+    	toboggan++;
+    	break;
+    case 200:
+    	snack_bar++;
+    	break;
     default:
-        printf("Unknown message code: %d                                              \n", code);
+        printf("Unknown message code: %d                                              \n", code[0]);
         break;
     }
 
     // Print counts on the last line, \r makes it so that the cursor goes to the first line
-    printf("Child: %d, Adult: %d, Elder: %d \r",
-           child, adult, elder);
+    printf("Child: %d, Adult: %d, Elder: %d, Toboggan Uses: %d, Snacks Bought: %d \r",
+           child, adult, elder, toboggan, snack_bar);
 
     // Flush the output to ensure it's displayed immediately
     fflush(stdout);
@@ -122,7 +114,7 @@ void decode_message(int code)
 */
 int check_client_disconnect()
 {
-    int code = 0;
+    int code[2] = {};
     int bytes_received = recv(client_socket, &code, sizeof(code), 0);
 
     if (bytes_received <= 0)
@@ -138,3 +130,23 @@ int check_client_disconnect()
         return 1;
     }
 }
+
+/*
+    This function is responsible for connecting to a client when receiving a request to connect
+*/
+int connect_client()
+{
+    client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_addr_len);
+    if (client_socket == -1)
+    {
+        return -1;
+    }
+    else
+    {
+        return 1;
+    }
+}
+
+
+
+

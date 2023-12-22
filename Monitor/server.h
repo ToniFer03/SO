@@ -7,6 +7,6 @@
 void server_socket_create();
 int connect_client();
 int check_client_disconnect();
-void decode_message(int code);
+void decode_message(int code[2]);
 
 #endif
