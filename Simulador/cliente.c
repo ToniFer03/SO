@@ -42,9 +42,9 @@ int connect_server()
     Funtion responsible for sending the codes for the server to decode. It receives the code to be send
     (and INT) and the socket to send it too.
 */
-void send_message(int codeMessage, int id, int client_socket)
+void send_message(int codeMessage, int atractionNumber, int quitAtraction, int id, int client_socket)
 {
-    int code[2] = {codeMessage, id};
+    int code[4] = {codeMessage, atractionNumber, quitAtraction, id};
 
     // Send the integer code to the server
     int bytes_sent = send(client_socket, &code, sizeof(code), 0);

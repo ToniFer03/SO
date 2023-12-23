@@ -1,4 +1,5 @@
 /* simulador.h */
+#include <stdbool.h>
 #ifndef SIMULADOR_H
 #define SIMULADOR_H
 
@@ -31,7 +32,7 @@ struct Simulador_config
 struct Person_info
 {
     enum Faixa_etaria faixa_etaria; // Include the enum member
-    int *visited_Atractions;        // creates an array of all the visited atractions
+    bool visited_Atractions[10];        // creates an array of all the visited atractions
     int id;
     int patience;
 };

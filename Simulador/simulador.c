@@ -238,20 +238,18 @@ void familyWaterSlide(struct Person_info pessoa_thread, int clientSocket)
 
     if (pessoa_thread.faixa_etaria == 0) // criança
     {
-        // send_message(160, pessoa_thread.id, clientSocket);
-        send_message(160, pessoa_thread.id, clientSocket);
+        send_message(0, 0, 0, pessoa_thread.id, clientSocket);
     }
     else if (pessoa_thread.faixa_etaria == 1) // adulto
     {
-        // send_message(170, pessoa_thread.id, clientSocket);
-        send_message(170, pessoa_thread.id, clientSocket);
+        send_message(0, 0, 0, pessoa_thread.id, clientSocket);
     }
     else // idoso
     {
-        // send_message(180, pessoa_thread.id, clientSocket);
-        send_message(180, pessoa_thread.id, clientSocket);
+        send_message(0, 0, 0, pessoa_thread.id, clientSocket);
     }
 
+    usleep(50000); // Sleep for 0.5 seconds
     pthread_mutex_unlock(&access_familyWaterSlide);
 
     if (pessoa_thread.faixa_etaria == 0) // criança
@@ -285,6 +283,7 @@ void toboggan(struct Person_info pessoa_thread, int clientSocket)
         if (giveUpChance > pessoa_thread.patience)
         {
             printf("Person %d left the toboggan (Gave up).\n", pessoa_thread.id);
+            send_message(0, 1, 1, pessoa_thread.id, clientSocket);
             sem_post(&sem_toboggan);
             return;
         }
@@ -294,9 +293,8 @@ void toboggan(struct Person_info pessoa_thread, int clientSocket)
 
     printf("Person %d is using the toboggan.\n", pessoa_thread.id);
     usleep(50000); // sleep for 0.05s
-    // sleep(1);
     printf("Person %d is done using the toboggan.\n", pessoa_thread.id);
-    send_message(190, pessoa_thread.id, clientSocket);
+    send_message(0, 1, 0, pessoa_thread.id, clientSocket);
 
     pthread_mutex_unlock(&access_toboggan);
     sem_post(&sem_toboggan);
@@ -315,6 +313,7 @@ void snack_bar(struct Person_info pessoa_thread, int clientSocket)
     if (giveUpChance > pessoa_thread.patience)
     {
         printf("Person %d left the bar (Gave up).\n", pessoa_thread.id);
+        send_message(0, 2, 1, pessoa_thread.id, clientSocket);
         sem_post(&sem_snack_bar);
         return;
     }
@@ -325,7 +324,7 @@ void snack_bar(struct Person_info pessoa_thread, int clientSocket)
     pthread_mutex_lock(&snack);
 
     nu_snack--;
-    send_message(200, pessoa_thread.id, clientSocket);
+    send_message(0, 2, 0, pessoa_thread.id, clientSocket);
     printf("Person %d got a snack.\n", pessoa_thread.id);
 
     pthread_mutex_unlock(&snack);
@@ -337,20 +336,52 @@ void snack_bar(struct Person_info pessoa_thread, int clientSocket)
 // function to manage the entry intro the atractions
 void manageAtractions(struct Person_info pessoa_thread, int clientSocket)
 {
-    int nextAtraction = rand() % 3;
-    switch (nextAtraction)
+    bool stay_on_park = true;
+    int nextAtraction = 0;
+
+    // When all atractions are visited, the person can exit de park
+    while (stay_on_park)
     {
-    case 0:
-        familyWaterSlide(pessoa_thread, clientSocket);
-        break;
-    case 1:
-        toboggan(pessoa_thread, clientSocket);
-        break;
-    case 2:
-        snack_bar(pessoa_thread, clientSocket);
-        break;
-    default:
-        break;
+        // Will keep giving a random atraction until its one that he hasnt visited
+        do
+        {
+            nextAtraction = rand() % 3;
+        } while (pessoa_thread.visited_Atractions[nextAtraction]);
+
+        // Sends the person to the atraction that was choosen
+        switch (nextAtraction)
+        {
+        case 0:
+            familyWaterSlide(pessoa_thread, clientSocket);
+            pessoa_thread.visited_Atractions[0] = true;
+            break;
+        case 1:
+            toboggan(pessoa_thread, clientSocket);
+            pessoa_thread.visited_Atractions[1] = true;
+            break;
+        case 2:
+            snack_bar(pessoa_thread, clientSocket);
+            pessoa_thread.visited_Atractions[2] = true;
+            break;
+        default:
+            break;
+        }
+
+        // Code that checks if the person has visited every atraction, if so exits the park
+        if(!pessoa_thread.visited_Atractions[0]){
+            continue;
+        }
+
+        if(!pessoa_thread.visited_Atractions[1]){
+            continue;
+        }
+
+        if(!pessoa_thread.visited_Atractions[2]){
+            continue;
+        }
+
+        stay_on_park = false;
+
     }
 }
 
@@ -380,6 +411,11 @@ void *person_thread(void *arg)
     struct ThreadArgs *args = (struct ThreadArgs *)arg; // Cast the argument to the appropriate structure
     struct Person_info pessoa_thread;                   // Create the person_info to hold information about the person
 
+    // Initializes the array of visited atractions with all false
+    for(int i = 0; i < 10; i++){
+        pessoa_thread.visited_Atractions[i] = false;
+    }
+
     /*
         This part of the code creates a unique seed for every thread so that every
         each time one of them calls rand it gives a different result. The seed is the thread_id
@@ -401,7 +437,7 @@ void *person_thread(void *arg)
 
     determineAgeGroup(args, &pessoa_thread); // Call the function to assign the person an age group
 
-    // Test the semaphore that will only let 200 people enter the park at a single time
+    // Semaphore that handles how many people are allowed on the park
     sem_wait(&entry_into_park);
     // send_message(140, pessoa_thread.id, args->client_socket); // Message that a person entered the park
     sleep(1);

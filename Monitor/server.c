@@ -51,58 +51,69 @@ void server_socket_create()
     This function is responsible for decoding the messages that it receives, receives an argument of type int
     and checks the code in a switch to check what kind of action need to be taken.
 */
-void decode_message(int code[2])
+void decode_message(int code[4])
 {
     // Define static variables to keep track of counts
-    static int child = 0;
-    static int adult = 0;
-    static int elder = 0;
-    static int toboggan = 0;
-    static int snack_bar = 0;
+    static int quit_Toboggan = 0;
+    static int quit_Snack_bar = 0;
+    static int quit_FamilyWaterSlide = 0;
+    static int used_Toboggan = 0;
+    static int used_Snack_bar = 0;
+    static int used_FamilyWaterSlide = 0;
 
-    switch (code[0])
+    if(code[0] == 0) // Code that means its related to atractions
     {
-    case 100:
-        printf("A person was created.                                                 \n");
-        break;
-    case 110:
-        child++;
-        break;
-    case 120:
-        adult++;
-        break;
-    case 130:
-        elder++;
-        break;
-    case 140:
-        printf("Entry into the park (%d)                                                 \n", code[1]);
-        break;
-    case 150:
-        printf("Exited the park (%d)                                                     \n", code[1]);
-        break;
-    case 160:
-        printf("Criança (Pessoa %d) entrou no escorrega                                           \n", code[1]);
-        break;
-    case 170:
-        printf("Adulto (Pessoa %d) entrou no escorrega                                           \n", code[1]);
-        break;
-    case 180:
-        printf("Idoso (Pessoa %d) entrou no escorrega                                           \n", code[1]);
-        break;
-    case 190:
-    	toboggan++;
-    	break;
-    case 200:
-    	snack_bar++;
-    	break;
-    default:
-        printf("Unknown message code: %d                                              \n", code[0]);
-        break;
+        switch (code[1]) // Switch that refers to an attraction in particular
+        {
+        case 0:
+            if(code[2] == 0) // If its 0, the person used the attraction
+            {
+                printf("A person (%d) used the Family Waterslide                                      \n", code[3]); // Code 3 refers to the person ID
+                used_FamilyWaterSlide += 1;
+            } else { // Else it quit waiting to use it
+                printf("A person (%d) waited too much time and quit using the Family Waterslide       \n", code[3]);
+                quit_FamilyWaterSlide += 1;
+            }
+            break;
+        
+        case 1:
+            if(code[2] == 0) // If its 0, the person used the attraction
+            {
+                printf("A person (%d) used the Toboggan                                               \n", code[3]); // Code 3 refers to the person ID
+                used_Toboggan += 1;
+            } else { // Else it quit waiting to use it
+                printf("A person (%d) waited too much time and quit using the Toboggan                \n", code[3]);
+                quit_Toboggan += 1;
+            }
+            break;
+        
+        case 2:
+            if(code[2] == 0) // If its 0, the person used the attraction
+            {
+                printf("A person (%d) used the Snackbar                                               \n", code[3]); // Code 3 refers to the person ID
+                used_Snack_bar += 1;
+            } else { // Else it quit waiting to use it
+                printf("A person (%d) waited too much time and quit using the Snackbar                \n", code[3]);
+                quit_Snack_bar += 1;
+            }
+            break;
+
+        default:
+            break;
+        }
     }
 
-    // Print counts on the last line, \r makes it so that the cursor goes to the first line
-    printf("Child: %d, Adult: %d, Elder: %d, Toboggan Uses: %d, Snacks Bought: %d \r",
-           child, adult, elder, toboggan, snack_bar);
+    // Prints the counts of every atraction on the terminal
+    printf("                                                                            \n");
+    printf("Number of people that used an atraction:                                    \n");
+    printf("Family Waterslide:..................%d                                      \n", used_FamilyWaterSlide);
+    printf("Toboggan:...........................%d                                      \n", used_Toboggan);
+    printf("Snackbar:...........................%d                                      \n", used_Snack_bar);
+    printf("Number of people who quit while on line:                                    \n");
+    printf("Family Waterslide:..................%d                                      \n", quit_FamilyWaterSlide);
+    printf("Toboggan:...........................%d                                      \n", quit_Toboggan);
+    printf("Snackbar:-------------------------- %d                                      \n",quit_Snack_bar);
+    printf("\033[9A\033[0G\033[?25l"); // This print puts the cursor 9 lines up and on the first caracter of the line
 
     // Flush the output to ensure it's displayed immediately
     fflush(stdout);
@@ -114,12 +125,13 @@ void decode_message(int code[2])
 */
 int check_client_disconnect()
 {
-    int code[2] = {};
+    int code[4] = {};
     int bytes_received = recv(client_socket, &code, sizeof(code), 0);
 
     if (bytes_received <= 0)
     {
         // The client has disconnected or an error occurred, so exit the loop
+        printf("\033[999;999H");
         printf("\n");
         printf("Client disconnected or an error occurred. Exiting the loop.\n");
         return 0;
