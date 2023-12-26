@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <time.h>
 #include <semaphore.h>
 #include "simulador.h"
 #include "leitor_ficheiros.h"
@@ -81,20 +80,12 @@ int main(int argc, char *argv[])
     args.client_socket = client_socket;
     args.logfile = logfile;
     args.config = config;
+    args.start_time = time(NULL);
 
-    // define time variables for the simulation
-    time_t start_time = time(NULL);
-    time_t current_time = start_time;
-
-    pthread_t person[MAX_NUM_THREADS]; // create the maximum number of threads
+    printf("Start time: %ld\n", args.start_time);
+    pthread_t person[config.threads_to_create]; // create the maximum number of threads
     pthread_t barista[1];
     int i;
-    /*
-        This loop will be in charge of creating the number of threads at the beggining,
-        the MAX_NUM_THREADS is defined in the header file of simulador. In case there is an error it
-        will use the logMessage to print that there was an error.
-        Also uses Mutex to make sure only a thread at a time has access to the file
-    */
 
     // Create a thread named "barista"
     if (pthread_create(barista, NULL, barista_thread, &args) != 0)
@@ -103,7 +94,15 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    for (i = 0; i < MAX_NUM_THREADS; i++)
+
+    /*
+        This loop will be in charge of creating the number of threads at the beggining,
+        the MAX_NUM_THREADS is defined in the header file of simulador. In case there is an error it
+        will use the logMessage to print that there was an error.
+        Also uses Mutex to make sure only a thread at a time has access to the file
+    */
+
+    for (i = 0; i < config.threads_to_create; i++)
     {
         // Create a thread named "person"
         if (pthread_create(person + i, NULL, person_thread, &args) != 0)
@@ -113,12 +112,13 @@ int main(int argc, char *argv[])
         }
     }
 
+
     /*
         This second loop is in charge of closing the threads down, if everythings goes down fine it will
         not do anything. In case there is an error follow a similar logic to the one above and prints
         that there was an error, aswell as the number of the thread responsible for it
     */
-    for (i = 0; i < MAX_NUM_THREADS; i++)
+    for (i = 0; i < config.threads_to_create; i++)
     {
         // Wait for the thread to finish
         if (pthread_join(person[i], NULL) != 0)
@@ -303,19 +303,20 @@ void toboggan(struct Person_info pessoa_thread, int clientSocket)
 
 void snack_bar(struct Person_info pessoa_thread, int clientSocket)
 {
+    /*
+        If there are people on the queue, for the snackbar, the patience of the person
+        is tested to see if it will give up or not
+    */
     if (sem_trywait(&sem_snack_bar) != 0)
     {
-        printf("Person %d left the bar (Queue is full).\n", pessoa_thread.id);
-        return;
-    }
-
-    int giveUpChance = getRandomNumber(99);
-    if (giveUpChance > pessoa_thread.patience)
-    {
-        printf("Person %d left the bar (Gave up).\n", pessoa_thread.id);
-        send_message(0, 2, 1, pessoa_thread.id, clientSocket);
-        sem_post(&sem_snack_bar);
-        return;
+        int giveUpChance = getRandomNumber(99);
+        if (giveUpChance > pessoa_thread.patience)
+        {
+            printf("Person %d left the bar (Gave up).\n", pessoa_thread.id);
+            send_message(0, 2, 1, pessoa_thread.id, clientSocket);
+            sem_post(&sem_snack_bar);
+            return;
+        }
     }
 
     printf("Person %d is waiting at the bar.\n", pessoa_thread.id); // Print when a person is waiting
@@ -424,6 +425,7 @@ void *person_thread(void *arg)
     unsigned int seed = (unsigned int)pthread_self();
     srand(seed);
 
+    // lock for mutual exclusion when giving an id to the thread
     pthread_mutex_lock(&lock);
     char str[50];
     sprintf(str, "Pessoa %d criada com sucesso", nu);
@@ -438,14 +440,30 @@ void *person_thread(void *arg)
     determineAgeGroup(args, &pessoa_thread); // Call the function to assign the person an age group
 
     // Semaphore that handles how many people are allowed on the park
+    send_message(0, 3, 0, pessoa_thread.id, args->client_socket); // Message entry into line
     sem_wait(&entry_into_park);
-    // send_message(140, pessoa_thread.id, args->client_socket); // Message that a person entered the park
-    sleep(1);
-
-    manageAtractions(pessoa_thread, args->client_socket);
-
-    sem_post(&entry_into_park);
-    // send_message(150, pessoa_thread.id ,args->client_socket); // Message that a person left the park
+    
+    /*
+        This will check if the time stipulated for simulation has elapsed or not, if yes the thread will not enter the park
+    */
+    if(args->start_time + args->config.simulation_duration > time(NULL)){ 
+        gettimeofday(&pessoa_thread.time_entry_park, NULL); // get time function entered the park
+        send_message(0, 3, 1, pessoa_thread.id, args->client_socket); // Message person entered the park
+        manageAtractions(pessoa_thread, args->client_socket); //function that manages the entry into attractions
+        sem_post(&entry_into_park); 
+        send_message(0, 3, 2, pessoa_thread.id, args->client_socket); // Message the person exited the park
+    
+        // Handel of time after leaving park
+        gettimeofday(&pessoa_thread.time_exit_park, NULL); // get time function exited the park
+        struct timeval diff; // declare a new struct timeval variable
+        timersub(&pessoa_thread.time_exit_park, &pessoa_thread.time_entry_park, &diff); // calculate difference and put it on the var diff
+        //printf("Difference: %ld.%06ld\n", diff.tv_sec, diff.tv_usec);
+    
+    } else {
+        printf("Park is closed \n");
+        send_message(0, 3, 3, pessoa_thread.id, args->client_socket);
+        sem_post(&entry_into_park);
+    }
 
     return NULL;
 }

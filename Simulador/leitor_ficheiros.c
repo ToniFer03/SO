@@ -64,6 +64,10 @@ int readConfigFile(const char *filename, struct Simulador_config *Config)
             {
             	Config->max_people_snack_bar = atoi(value);
             }
+            else if (strcmp(key, "Threads_to_create") == 0)
+            {
+            	Config->threads_to_create = atoi(value);
+            }
             else
             {
                 // Debugging: Print if key is not recognized

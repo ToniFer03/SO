@@ -54,6 +54,10 @@ void server_socket_create()
 void decode_message(int code[4])
 {
     // Define static variables to keep track of counts
+    static int online_park = 0;
+    static int inside_park = 0;
+    static int used_park_today = 0;
+    static int park_closed_before_entry = 0;
     static int quit_Toboggan = 0;
     static int quit_Snack_bar = 0;
     static int quit_FamilyWaterSlide = 0;
@@ -61,7 +65,7 @@ void decode_message(int code[4])
     static int used_Snack_bar = 0;
     static int used_FamilyWaterSlide = 0;
 
-    if(code[0] == 0) // Code that means its related to atractions
+    if(code[0] == 0) // Related to number of people who used something
     {
         switch (code[1]) // Switch that refers to an attraction in particular
         {
@@ -97,6 +101,26 @@ void decode_message(int code[4])
                 quit_Snack_bar += 1;
             }
             break;
+        
+        case 3:
+            if(code[2] == 0) // If its 0, the person is in line to use the atraction
+            {
+                printf("A person (%d) is on line for the park                                         \n", code[3]); // Code 3 refers to the person ID
+                online_park += 1;
+            } else if (code[2] == 1) { // If its 1 the person entered the park
+                printf("A person (%d) entered the park                                                \n", code[3]);
+                online_park -= 1;
+                inside_park += 1;
+            } else if (code[2] == 2){ // If its 2 the person exited the park
+                printf("A person (%d) exited the park                                                 \n", code[3]);
+                inside_park -= 1;
+                used_park_today += 1;
+            } else {
+                printf("A person (%d) tried to enter, but the park was closed                         \n", code[3]);
+                online_park -= 1;
+                park_closed_before_entry += 1;
+            }
+            break;
 
         default:
             break;
@@ -105,6 +129,11 @@ void decode_message(int code[4])
 
     // Prints the counts of every atraction on the terminal
     printf("                                                                            \n");
+    printf("General Numbers of the Park:                                                \n");
+    printf("On line to enter the park:..........%d                                      \n", online_park);
+    printf("Inside the park:....................%d                                      \n", inside_park);
+    printf("Used park today:....................%d                                      \n", used_park_today);
+    printf("Didnt manage to enter:..............%d                                      \n", park_closed_before_entry);
     printf("Number of people that used an atraction:                                    \n");
     printf("Family Waterslide:..................%d                                      \n", used_FamilyWaterSlide);
     printf("Toboggan:...........................%d                                      \n", used_Toboggan);
@@ -112,8 +141,8 @@ void decode_message(int code[4])
     printf("Number of people who quit while on line:                                    \n");
     printf("Family Waterslide:..................%d                                      \n", quit_FamilyWaterSlide);
     printf("Toboggan:...........................%d                                      \n", quit_Toboggan);
-    printf("Snackbar:-------------------------- %d                                      \n",quit_Snack_bar);
-    printf("\033[9A\033[0G\033[?25l"); // This print puts the cursor 9 lines up and on the first caracter of the line
+    printf("Snackbar:...........................%d                                      \n",quit_Snack_bar);
+    printf("\033[14A\033[0G\033[?25l"); // This print puts the cursor 9 lines up and on the first caracter of the line
 
     // Flush the output to ensure it's displayed immediately
     fflush(stdout);
