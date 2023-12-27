@@ -1,11 +1,11 @@
 # Configurações das Pessoas
-Probability_Being_Elder = 33.3
-Probability_Being_Child = 33.3
+Probability_Being_Elder = 20.5
+Probability_Being_Child = 18.8
 
 #Configuração da Simulação
 Simulation_duration_(seconds) = 60
 Time_being_simulated_(Hours) = 8
-Max_People_Park = 100
+Max_People_Park = 200
 Max_People_Toboggan = 50
 Max_People_Snack_Bar = 50
-Threads_to_create = 500
+Threads_to_create = 1000

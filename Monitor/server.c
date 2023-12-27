@@ -7,10 +7,17 @@
 #include <netinet/in.h>
 #include "server.h"
 
-int server_socket;                           // Declare server_socket at the file scope
-int client_socket;                           // Declare client_socket at the file scope
-struct sockaddr_in server_addr, client_addr; // Store information about sockets
-socklen_t client_addr_len;                   // Store the size of the client address
+
+// Global Variables
+int server_socket;                                 // Declare server_socket at the file scope
+int client_socket;                                 // Declare client_socket at the file scope
+struct sockaddr_in server_addr, client_addr;       // Store information about sockets
+socklen_t client_addr_len;                         // Store the size of the client address
+struct statistics_time_simulator stats_time = {0}; // Struct that will hold info from the simulator
+struct statistics_number_people stats_num = {0};   // Struct that will hold info from the simulator
+struct statistics_live live_stats = {0};           // Struct that will hold statistics of live park
+struct calculated_statistics final_stats = {0};         // Struct that will hold the final stats to present to the user
+
 
 /*
     This function is responsible for creating a socket server to be able to communicate with
@@ -47,106 +54,390 @@ void server_socket_create()
     }
 }
 
-/*
-    This function is responsible for decoding the messages that it receives, receives an argument of type int
-    and checks the code in a switch to check what kind of action need to be taken.
-*/
-void decode_message(int code[4])
-{
-    // Define static variables to keep track of counts
-    static int online_park = 0;
-    static int inside_park = 0;
-    static int used_park_today = 0;
-    static int park_closed_before_entry = 0;
-    static int quit_Toboggan = 0;
-    static int quit_Snack_bar = 0;
-    static int quit_FamilyWaterSlide = 0;
-    static int used_Toboggan = 0;
-    static int used_Snack_bar = 0;
-    static int used_FamilyWaterSlide = 0;
 
-    if(code[0] == 0) // Related to number of people who used something
-    {
-        switch (code[1]) // Switch that refers to an attraction in particular
+/*
+    Funtion responsible for calculating the average time, and converting it to the simulated time
+    in seconds.
+*/
+double calculate_avg_time(int time_seconds, int time_microseconds, int total_number_people){
+    double total_time = time_seconds + time_microseconds / 1.0e6;
+    return ((total_time/total_number_people) * stats_time.timeScale);
+}
+
+
+/*
+    Function that receives a value of seconds and turns it into the personalized time
+    struct to present to the user, it receives the total time in seconds and the adress
+    of the struct to put the info into
+*/
+void convert_personalized_time(double time, struct personalized_time * pers_time)
+{
+    //Calculate hours
+    pers_time->hours = (int)(time / 3600);
+
+    // Calculate remaining minutes
+    double remaining_minutes = time - pers_time->hours * 3600;
+    pers_time->minutes = (int)(remaining_minutes / 60);
+
+    // Calculate remaining seconds
+    pers_time->seconds = (int)(remaining_minutes - pers_time->minutes * 60);
+}
+
+
+/*
+    Function that will calculate all the averages when the simulator ends
+*/
+void calculate_final_statistics()
+{
+    double temp_seconds = 0; // Temp variable
+
+    // Calculate average time online to use the park (doesnt count the ones that couldnt use the park)
+    temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_park_seconds, stats_time.sum_time_on_line_park_microseconds, stats_num.used_park_today);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_park);
+
+    // Calculate average time inside the park
+    temp_seconds = calculate_avg_time(stats_time.sum_time_inside_park_seconds, stats_time.sum_time_inside_park_microseconds, stats_num.used_park_today);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_inside_park);
+
+    // Calculate average time waiting fot the toboggan
+    temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_toboggan_seconds, stats_time.sum_time_on_line_toboggan_microseconds, stats_num.used_Toboggan);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_toboggan);
+
+    // Calculate the average time waiting for the snackbar
+    temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_snack_seconds, stats_time.sum_time_on_line_snack_microseconds, stats_num.used_Snack_bar);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_snack);
+
+    // Calculate the average time children waited for the family waterslide
+    temp_seconds = calculate_avg_time(stats_time.sum_time_child_famwaterslide_seconds, stats_time.sum_time_child_famwaterslide_microseconds, stats_num.children_used_Familywaterslide);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_child_famWaterslide);
+
+    // Calculate the average time elders waited for the family waterslide
+    temp_seconds = calculate_avg_time(stats_time.sum_time_elder_famwaterslide_seconds, stats_time.sum_time_elder_famwaterslide_microseconds, stats_num.elders_used_Familywaterslide);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_elder_famWaterslide);
+
+    // Calculate the average time adults waited for the family waterslide
+    temp_seconds = calculate_avg_time(stats_time.sum_time_adult_famwaterslide_seconds, stats_time.sum_time_adult_famwaterslide_microseconds, stats_num.adults_used_Familywaterslide);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_adult_famWaterslide);
+    
+}
+
+
+/*
+    Decode message will call this function too handle info related to the number of people who did something
+    Code[0] == 0
+*/
+void decode_number_people(int code[4])
+{
+    switch (code[1]) // Switch to differenciate what atraction the info relates
         {
         case 0:
-            if(code[2] == 0) // If its 0, the person used the attraction
+            if (code[2] == 0) // Person used the park
+            { 
+                stats_num.used_park_today += 1;
+            } 
+            else // Person couldnt enter in time
             {
-                printf("A person (%d) used the Family Waterslide                                      \n", code[3]); // Code 3 refers to the person ID
-                used_FamilyWaterSlide += 1;
-            } else { // Else it quit waiting to use it
-                printf("A person (%d) waited too much time and quit using the Family Waterslide       \n", code[3]);
-                quit_FamilyWaterSlide += 1;
+                stats_num.park_closed_before_entry += 1;
             }
             break;
         
         case 1:
-            if(code[2] == 0) // If its 0, the person used the attraction
+            if(code[2] == 0) 
             {
                 printf("A person (%d) used the Toboggan                                               \n", code[3]); // Code 3 refers to the person ID
-                used_Toboggan += 1;
-            } else { // Else it quit waiting to use it
+                stats_num.used_Toboggan += 1;
+            } else { 
                 printf("A person (%d) waited too much time and quit using the Toboggan                \n", code[3]);
-                quit_Toboggan += 1;
+                stats_num.quit_Toboggan += 1;
             }
             break;
         
         case 2:
-            if(code[2] == 0) // If its 0, the person used the attraction
+            if(code[2] == 0)
             {
-                printf("A person (%d) used the Snackbar                                               \n", code[3]); // Code 3 refers to the person ID
-                used_Snack_bar += 1;
-            } else { // Else it quit waiting to use it
-                printf("A person (%d) waited too much time and quit using the Snackbar                \n", code[3]);
-                quit_Snack_bar += 1;
+                printf("A child (%d) used the Family Waterslide                                      \n", code[3]); // Code 3 refers to the person ID
+                stats_num.children_used_Familywaterslide += 1;
+            } 
+            else if (code[2] == 1)
+            {
+                printf("An elder (%d) used the Family Waterslide                                     \n", code[3]); // Code 3 refers to the person ID
+                stats_num.elders_used_Familywaterslide += 1;
+            }
+            else 
+            {
+                printf("An adult (%d) used the Family Waterslide                                     \n", code[3]); // Code 3 refers to the person ID
+                stats_num.adults_used_Familywaterslide += 1;
             }
             break;
         
         case 3:
-            if(code[2] == 0) // If its 0, the person is in line to use the atraction
+            if(code[2] == 0)
             {
-                printf("A person (%d) is on line for the park                                         \n", code[3]); // Code 3 refers to the person ID
-                online_park += 1;
-            } else if (code[2] == 1) { // If its 1 the person entered the park
-                printf("A person (%d) entered the park                                                \n", code[3]);
-                online_park -= 1;
-                inside_park += 1;
-            } else if (code[2] == 2){ // If its 2 the person exited the park
-                printf("A person (%d) exited the park                                                 \n", code[3]);
-                inside_park -= 1;
-                used_park_today += 1;
-            } else {
-                printf("A person (%d) tried to enter, but the park was closed                         \n", code[3]);
-                online_park -= 1;
-                park_closed_before_entry += 1;
+                printf("A person (%d) used the Snackbar                                               \n", code[3]); // Code 3 refers to the person ID
+                stats_num.used_Snack_bar += 1;
+            } else { 
+                printf("A person (%d) waited too much time and quit using the Snackbar                \n", code[3]);
+                stats_num.quit_Snack_bar += 1;
             }
             break;
 
         default:
             break;
         }
+}
+
+
+/*
+    Decode message will call this funtion to handle info related to the time statistics of people
+    Code[0] == 1
+*/
+void decode_time_people(int code[4])
+{
+    switch(code[1]) // Switch to differenciate what atraction the info relates
+        {
+            case 0:
+                if(code[2] == 0) // Time person was on line to the park (seconds)
+                {
+                    stats_time.sum_time_on_line_park_seconds += code[3];
+                } 
+                if(code[2] == 1) // Time person was on line to the park (microseconds)
+                {
+                    stats_time.sum_time_on_line_park_microseconds += code[3];
+                }
+                break;   
+
+            case 1:
+                if(code[2] == 0) // Time person used the park (seconds)
+                {
+                    stats_time.sum_time_inside_park_seconds += code[3];
+                } 
+                if(code[2] == 1) // Time person used the park (microseconds)
+                {
+                    stats_time.sum_time_inside_park_microseconds += code[3];
+                }
+                break;   
+
+            case 2:
+                if(code[2] == 0) // Time person was on line toboggan (seconds)
+                {
+                    stats_time.sum_time_on_line_toboggan_seconds += code[3];
+                } 
+                if(code[2] == 1) // Time person was on line toboggan (microseconds)
+                {
+                    stats_time.sum_time_on_line_toboggan_microseconds += code[3];
+                }
+                break; 
+
+            case 4:
+                if(code[2] == 0) // Time person was on line snackbar (seconds)
+                {
+                    stats_time.sum_time_on_line_snack_seconds += code[3];
+                } 
+                if(code[2] == 1) // Time person was on line snackbar (microseconds)
+                {
+                    stats_time.sum_time_on_line_snack_microseconds += code[3];
+                }
+                break; 
+
+            case 5: // Child
+                if(code[2] == 0) // Time child was on line family waterslide (seconds)
+                {
+                    stats_time.sum_time_child_famwaterslide_seconds += code[3];
+                } 
+                if(code[2] == 1) // Time child was on line family waterslide (microseconds)
+                {
+                    stats_time.sum_time_child_famwaterslide_microseconds += code[3];
+                }
+                break; 
+
+            case 6: // Elder
+                if(code[2] == 0) // Time elder was on line family waterslide (seconds)
+                {
+                    stats_time.sum_time_elder_famwaterslide_seconds += code[3];
+                } 
+                if(code[2] == 1) // Time elder was on line family waterslide (microseconds)
+                {
+                    stats_time.sum_time_elder_famwaterslide_microseconds += code[3];
+                }
+                break; 
+
+            case 7: // Adult
+                if(code[2] == 0) // Time adult was on line family waterslide (seconds)
+                {
+                    stats_time.sum_time_adult_famwaterslide_seconds += code[3];
+                } 
+                if(code[2] == 1) // Time adult was on line family waterslide (microseconds)
+                {
+                    stats_time.sum_time_adult_famwaterslide_microseconds += code[3];
+                }
+                break; 
+
+            default:
+                break;
+        }
+}
+
+
+
+/*
+    Decode message will call this funtion to handle live statistics of the park and print what info it receives
+    Code[0] == 2
+*/
+void decode_live_stats(int code[4])
+{
+    switch (code[1]) // Switch to differenciate what atraction the info relates
+        {
+        case 0:
+            if(code[2] == 0) 
+            {
+                printf("A person (%d) is on line for the park                                         \n", code[3]); // Code 3 refers to the person ID
+                live_stats.inline_park += 1;
+            } else if (code[2] == 1) { 
+                printf("A person (%d) entered the park                                                \n", code[3]);
+                live_stats.inline_park -= 1;
+                live_stats.inside_park += 1;
+            } else if (code[2] == 2){ 
+                printf("A person (%d) exited the park                                                 \n", code[3]);
+                live_stats.inside_park -= 1;
+            } else {
+                printf("A person (%d) tried to enter, but the park was closed                         \n", code[3]);
+                live_stats.inline_park -= 1;
+            }
+            break;
+        
+        case 1:
+            if(code[2] == 0) 
+            {
+                printf("A person (%d) is going to the toboggan section                                \n", code[3]); // Code 3 refers to the person ID
+                live_stats.toboggan += 1;
+            } else { 
+                printf("A person (%d) is exiting the toboggan section                                 \n", code[3]);
+                live_stats.toboggan -= 1;
+            }
+            break;
+        
+        case 2:
+            if(code[2] == 0)
+            {
+                printf("A person (%d) is going to the Family Waterslide section                       \n", code[3]); // Code 3 refers to the person ID
+                live_stats.family_waterslide += 1;
+            }
+            else 
+            {
+                printf("A person (%d) is exiting the Family Waterslide section                        \n", code[3]); // Code 3 refers to the person ID
+                live_stats.family_waterslide -= 1;
+
+            }
+            break;
+        
+        case 3:
+            if(code[2] == 0)
+            {
+                printf("A person (%d) is going to the Snackbar section                                \n", code[3]); // Code 3 refers to the person ID
+                live_stats.Snackbar += 1;
+            } else { 
+                printf("A person (%d) is exiting the Snackbar section                                 \n", code[3]);
+                live_stats.Snackbar -= 1;
+            }
+            break;
+
+        default:
+            break;
+        }
+}
+
+
+/*
+    This function is responsible for decoding the messages that it receives, receives an argument of type int
+    and checks the code in a switch to check what kind of action need to be taken.
+*/
+void decode_message(int code[4])
+{
+    if(code[0] == 0) // Related to number of people who used something
+    {
+        decode_number_people(code);
     }
 
-    // Prints the counts of every atraction on the terminal
-    printf("                                                                            \n");
-    printf("General Numbers of the Park:                                                \n");
-    printf("On line to enter the park:..........%d                                      \n", online_park);
-    printf("Inside the park:....................%d                                      \n", inside_park);
-    printf("Used park today:....................%d                                      \n", used_park_today);
-    printf("Didnt manage to enter:..............%d                                      \n", park_closed_before_entry);
-    printf("Number of people that used an atraction:                                    \n");
-    printf("Family Waterslide:..................%d                                      \n", used_FamilyWaterSlide);
-    printf("Toboggan:...........................%d                                      \n", used_Toboggan);
-    printf("Snackbar:...........................%d                                      \n", used_Snack_bar);
-    printf("Number of people who quit while on line:                                    \n");
-    printf("Family Waterslide:..................%d                                      \n", quit_FamilyWaterSlide);
-    printf("Toboggan:...........................%d                                      \n", quit_Toboggan);
-    printf("Snackbar:...........................%d                                      \n",quit_Snack_bar);
-    printf("\033[14A\033[0G\033[?25l"); // This print puts the cursor 9 lines up and on the first caracter of the line
+    if(code[0] == 1) // Related to the time
+    { 
+        decode_time_people(code);
+    }
 
-    // Flush the output to ensure it's displayed immediately
-    fflush(stdout);
+    if(code[0] == 2) // Related to the live stats of the park
+    {
+        decode_live_stats(code);
+    }
+
+    if(code[0] == 100) // Receive the information on the timescale being used
+    { 
+        stats_time.timeScale = code[1];
+    }
+
+    if(code[0] == 999) // The simulator has ended, calculate and print the final statistics
+    { 
+        printf("\033[999;999H"); // Put the cursor at the end of the terminal
+        printf("\n");
+
+        // Calculate final statistics
+        calculate_final_statistics();
+
+        printf("Measured in number of people                                                \n");
+        printf("----------------------------------------------------------------------------\n");
+        printf("Park: (Entered | Didn't Enter):...............................(%d | %d)     \n", 
+        stats_num.used_park_today, stats_num.park_closed_before_entry);
+        printf("Used the Family Waterslide: (Children | Adults | Elders):.....(%d | %d | %d)\n", 
+        stats_num.children_used_Familywaterslide, stats_num.adults_used_Familywaterslide, stats_num.elders_used_Familywaterslide);
+        printf("Toboggan (Used | Quit on Line):...............................(%d | %d)     \n",
+        stats_num.used_Toboggan, stats_num.quit_Toboggan);
+        printf("Snackbar (Used | Quit on Line):...............................(%d | %d)     \n",
+        stats_num.used_Snack_bar, stats_num.quit_Snack_bar);
+        printf("\n");
+
+        // Print final statistics to show the user
+        printf("Information about this day at the park:                                     \n");
+        printf("----------------------------------------------------------------------------\n");
+        printf("Average time on line for the park: %d(h) %d(m) %d(s)                        \n",
+        final_stats.avg_time_on_line_park.hours, final_stats.avg_time_on_line_park.minutes, 
+        final_stats.avg_time_on_line_park.seconds);
+        printf("Average time inside the park: %d(h) %d(m) %d(s)                             \n",
+        final_stats.avg_time_inside_park.hours, final_stats.avg_time_inside_park.minutes, 
+        final_stats.avg_time_inside_park.seconds);
+        printf("Average time waiting for the toboggan: %d(h) %d(m) %d(s)                    \n",
+        final_stats.avg_time_on_line_toboggan.hours, final_stats.avg_time_on_line_toboggan.minutes, 
+        final_stats.avg_time_on_line_toboggan.seconds);
+        printf("Average time waiting for the Snackbar: %d(h) %d(m) %d(s)                    \n",
+        final_stats.avg_time_on_line_snack.hours, final_stats.avg_time_on_line_snack.minutes, 
+        final_stats.avg_time_on_line_snack.seconds);
+        printf("Average time children waited for the family waterslide: %d(h) %d(m) %d(s)   \n", 
+        final_stats.avg_time_child_famWaterslide.hours, final_stats.avg_time_child_famWaterslide.minutes, 
+        final_stats.avg_time_child_famWaterslide.seconds);
+        printf("Average time elders waited for the family waterslide: %d(h) %d(m) %d(s)     \n", 
+        final_stats.avg_time_elder_famWaterslide.hours, final_stats.avg_time_elder_famWaterslide.minutes, 
+        final_stats.avg_time_elder_famWaterslide.seconds);
+        printf("Average time adults waited for the family waterslide: %d(h) %d(m) %d(s)     \n", 
+        final_stats.avg_time_adult_famWaterslide.hours, 
+        final_stats.avg_time_adult_famWaterslide.minutes, final_stats.avg_time_adult_famWaterslide.seconds);
+
+        // Flush the output to ensure it's displayed immediately
+        fflush(stdout);
+    } 
+    else 
+    {
+        // Prints the live statistics of park
+        printf("                                                                            \n");
+        printf("Live numbers of the park:                                                   \n");
+        printf("In line to enter the park:..........%d                                      \n", live_stats.inline_park);
+        printf("Inside the park:....................%d                                      \n", live_stats.inside_park);
+        printf("In the Family waterslide:...........%d                                      \n", live_stats.family_waterslide);
+        printf("In Toboggan:........................%d                                      \n", live_stats.toboggan);
+        printf("In the Snackbar:....................%d                                      \n", live_stats.Snackbar);
+        printf("\033[7A\033[0G\033[?25l"); // This print puts the cursor 7 lines up and on the first caracter of the line
+
+        // Flush the output to ensure it's displayed immediately
+        fflush(stdout);
+    }
 }
+
 
 /*
     Function responsible for receiving messages for the other process, and check if
@@ -172,17 +463,18 @@ int check_client_disconnect()
     }
 }
 
+
 /*
     This function is responsible for connecting to a client when receiving a request to connect
 */
 int connect_client()
 {
     client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_addr_len);
-    if (client_socket == -1)
+    if (client_socket == -1) // Problem with the connection
     {
         return -1;
     }
-    else
+    else // The connection is sucessfull
     {
         return 1;
     }

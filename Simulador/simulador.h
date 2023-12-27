@@ -23,7 +23,6 @@ struct Simulador_config
     double probability_being_child;
     int simulation_duration;
     int time_being_simulated;
-    int atraction_number;
     int max_people_park;
     int max_people_toboggan;
     int max_people_snack_bar;
@@ -37,8 +36,15 @@ struct Person_info
     bool visited_Atractions[10];        // creates an array of all the visited atractions
     int id;
     int patience;
+    struct timeval time_on_line_park; // Time the person arrived on line at the park
     struct timeval time_entry_park; // will hold the time the person entered the park
     struct timeval time_exit_park; // will hold the time the person entered the park
+    struct timeval time_start_waiting_toboggan; // Will hold time person entered the line of the toboggan
+    struct timeval time_exit_waiting_toboggan; // Will hold time person exited the line of the toboggan
+    struct timeval time_start_waiting_snack;  // Will hold the time person started waiting for a snack
+    struct timeval time_exit_waiting_snack;  // Will hold the time the person got served the snack
+    struct timeval time_start_waiting_famwaterslide; // Will hold the time the person started waiting for the waterslide
+    struct timeval time_exit_waiting_famWaterslide; // Will hold the time the person used used the waterslide
 };
 
 // Define a struct to hold the client socket and person information
@@ -54,5 +60,6 @@ struct ThreadArgs
 void *person_thread(void *arg);    // Function executed by the thread
 void *barista_thread();
 const char *getCurrentTimestamp(); // Function to get the timestamp from now in char
+void calculateTimeScale(struct Simulador_config *config, int client_socket);
 
 #endif
