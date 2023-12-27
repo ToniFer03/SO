@@ -45,6 +45,8 @@ struct Person_info
     struct timeval time_exit_waiting_snack;  // Will hold the time the person got served the snack
     struct timeval time_start_waiting_famwaterslide; // Will hold the time the person started waiting for the waterslide
     struct timeval time_exit_waiting_famWaterslide; // Will hold the time the person used used the waterslide
+    struct timeval time_start_waiting_waterpolo; // Will hold the time for the person to start waiting for waterpolo
+    struct timeval time_exit_waiting_waterpolo; // Will hold the time for the persos to start playing waterpolo
 };
 
 // Define a struct to hold the client socket and person information

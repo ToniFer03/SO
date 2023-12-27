@@ -9,6 +9,11 @@
 #include "escrita_ficheiros.h"
 #include "cliente.h"
 
+#define BUFFER_SIZE 10
+
+int buffer[BUFFER_SIZE];
+int in = 0, out = 0;
+
 // semaphore
 sem_t entry_into_park;    // entry into the park
 sem_t sem_priority_elder; // semaphore for elder priority
@@ -29,7 +34,6 @@ pthread_mutex_t water_polo_lock;
 
 // Global variable
 int nu = 1;
-int nu_snack = 0;
 int players_water_polo = 0;
 
 
@@ -286,7 +290,7 @@ void familyWaterSlide(struct Person_info pessoa_thread, int clientSocket)
         send_time_monitor(1, 7, pessoa_thread.time_start_waiting_famwaterslide, pessoa_thread.time_exit_waiting_famWaterslide, clientSocket);
     }
 
-    usleep(300000); 
+    usleep(100000); 
     pthread_mutex_unlock(&access_familyWaterSlide);
 
     if (pessoa_thread.faixa_etaria == 0) // criança
@@ -331,8 +335,6 @@ void toboggan(struct Person_info pessoa_thread, int clientSocket)
         gettimeofday(&pessoa_thread.time_start_waiting_toboggan, NULL);
         waited_on_line = true;
         pthread_mutex_lock(&access_toboggan);
-        sem_post(&sem_toboggan);
-
     } 
 
 
@@ -356,6 +358,8 @@ void toboggan(struct Person_info pessoa_thread, int clientSocket)
     send_message(0, 1, 0, pessoa_thread.id, clientSocket); // Person used the toboggan
 
     pthread_mutex_unlock(&access_toboggan);
+    sem_post(&sem_toboggan);
+
 }
 
 
@@ -381,7 +385,8 @@ void snack_bar(struct Person_info pessoa_thread, int clientSocket)
 
     sem_wait(&snack_full);
     pthread_mutex_lock(&snack);
-    nu_snack--;
+    int drink = buffer[out];
+    out = (out + 1) % BUFFER_SIZE; // This makes it circular
     send_message(0, 3, 0, pessoa_thread.id, clientSocket); // Message the person got a snack
     
     // Send the wait time for the snack
@@ -398,7 +403,45 @@ void snack_bar(struct Person_info pessoa_thread, int clientSocket)
 
 void water_polo(struct Person_info pessoa_thread, int clientSocket)
 {
+    // Signal that a player has entered
+    sem_wait(&sem_water_polo);
 
+    int temp_entry_time = time(NULL); // Get time person entered the waterpolo queue for a team (for timeout porpouses)
+    gettimeofday(&pessoa_thread.time_start_waiting_waterpolo, NULL); // For statistics
+
+    pthread_mutex_lock(&water_polo_lock);
+    players_water_polo++;
+    pthread_mutex_unlock(&water_polo_lock);
+
+    // While waiting for 14 players
+    while (players_water_polo < 14)
+    {
+        if(temp_entry_time + 5 < time(NULL))
+        {
+            sem_post(&sem_water_polo);
+            pthread_mutex_lock(&water_polo_lock);
+            players_water_polo--;
+            pthread_mutex_unlock(&water_polo_lock);
+            send_message(0, 4, 1, pessoa_thread.id, clientSocket); // Didnt play waterpolo
+            return;
+        }
+        else {
+            usleep(50000); //sleep for better performance
+            continue;
+        }
+    }
+
+    gettimeofday(&pessoa_thread.time_exit_waiting_waterpolo, NULL);
+    send_time_monitor(1, 8, pessoa_thread.time_start_waiting_waterpolo, pessoa_thread.time_exit_waiting_waterpolo, clientSocket);
+
+    usleep(100000); // Time to simulate using the atraction
+    send_message(0, 4, 0, pessoa_thread.id, clientSocket);
+    pthread_mutex_lock(&water_polo_lock);
+    players_water_polo--;
+    pthread_mutex_unlock(&water_polo_lock);
+
+    // Signal that a player has exited
+    sem_post(&sem_water_polo);
 }
 
 
@@ -414,7 +457,7 @@ void manageAtractions(struct Person_info pessoa_thread, int clientSocket)
         // Will keep giving a random atraction until its one that he hasnt visited
         do
         {
-            nextAtraction = rand() % 3;
+            nextAtraction = rand() % 4;
         } while (pessoa_thread.visited_Atractions[nextAtraction]);
 
         // Sends the person to the atraction that was choosen
@@ -438,6 +481,11 @@ void manageAtractions(struct Person_info pessoa_thread, int clientSocket)
             send_message(2, 3, 1, pessoa_thread.id, clientSocket); // Person exited Snackbar
             pessoa_thread.visited_Atractions[2] = true;
             break;
+        case 3:
+            send_message(2, 4, 0, pessoa_thread.id, clientSocket); // Person entered the waterpolo
+            water_polo(pessoa_thread, clientSocket);
+            send_message(2, 4, 1, pessoa_thread.id, clientSocket); // Person exited the waterpolo
+            pessoa_thread.visited_Atractions[3] = true;
         default:
             break;
         }
@@ -455,6 +503,10 @@ void manageAtractions(struct Person_info pessoa_thread, int clientSocket)
             continue;
         }
 
+        if(!pessoa_thread.visited_Atractions[3]){
+            continue;
+        }
+
         stay_on_park = false;
 
     }
@@ -463,12 +515,15 @@ void manageAtractions(struct Person_info pessoa_thread, int clientSocket)
 
 void *barista_thread()
 {
+    int drink = 1;
     while (1)
     {
         sem_wait(&snack_empty);
         pthread_mutex_lock(&snack);
-        nu_snack++;
-        printf("Barista made a snack.\n");
+        buffer[in] = drink;
+        printf("Barista made a drink.\n");
+        in = (in + 1) % BUFFER_SIZE; // This makes it circular
+        drink++;
         pthread_mutex_unlock(&snack);
         sem_post(&snack_full);
         usleep(200000);

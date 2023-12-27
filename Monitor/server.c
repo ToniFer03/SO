@@ -118,6 +118,10 @@ void calculate_final_statistics()
     // Calculate the average time adults waited for the family waterslide
     temp_seconds = calculate_avg_time(stats_time.sum_time_adult_famwaterslide_seconds, stats_time.sum_time_adult_famwaterslide_microseconds, stats_num.adults_used_Familywaterslide);
     convert_personalized_time(temp_seconds, &final_stats.avg_time_adult_famWaterslide);
+
+    // Calculate the average time waiting for the waterpolo
+    temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_waterpolo_seconds, stats_time.sum_time_on_line_waterpolo_microseconds, stats_num.played_waterpolo);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_waterpolo);
     
 }
 
@@ -180,6 +184,18 @@ void decode_number_people(int code[4])
                 stats_num.quit_Snack_bar += 1;
             }
             break;
+
+        case 4:
+            if(code[2] == 0)
+            {
+                printf("A person (%d) played waterpolo                                                \n", code[3]); // Code 3 refers to the person ID
+                stats_num.played_waterpolo += 1;
+            }
+            else
+            {
+                printf("A person (%d) couldnt find a teammate for waterpolo                           \n", code[3]);
+                stats_num.not_played_waterpolo += 1;
+            }
 
         default:
             break;
@@ -270,7 +286,18 @@ void decode_time_people(int code[4])
                 {
                     stats_time.sum_time_adult_famwaterslide_microseconds += code[3];
                 }
-                break; 
+                break;
+            
+            case 8:
+                if(code[2] == 0) // Time adult was on line family waterslide (seconds)
+                {
+                    stats_time.sum_time_on_line_waterpolo_seconds+= code[3];
+                } 
+                if(code[2] == 1) // Time adult was on line family waterslide (microseconds)
+                {
+                    stats_time.sum_time_on_line_waterpolo_microseconds += code[3];
+                }
+                break;
 
             default:
                 break;
@@ -341,6 +368,17 @@ void decode_live_stats(int code[4])
             }
             break;
 
+        case 4:
+            if(code[2] == 0)
+            {
+                printf("A person (%d) is going to the Waterpolo section                               \n", code[3]); // Code 3 refers to the person ID
+                live_stats.waterpolo += 1;
+            } else { 
+                printf("A person (%d) is exiting the Waterpolo section                                \n", code[3]);
+                live_stats.waterpolo -= 1;
+            }
+            break;
+
         default:
             break;
         }
@@ -381,42 +419,47 @@ void decode_message(int code[4])
         // Calculate final statistics
         calculate_final_statistics();
 
-        printf("Measured in number of people                                                \n");
-        printf("----------------------------------------------------------------------------\n");
-        printf("Park: (Entered | Didn't Enter):...............................(%d | %d)     \n", 
+        printf("Measured in number of people                                                  \n");
+        printf("------------------------------------------------------------------------------\n");
+        printf("Park: (Entered | Didn't Enter):...............................(%d | %d)       \n", 
         stats_num.used_park_today, stats_num.park_closed_before_entry);
-        printf("Used the Family Waterslide: (Children | Adults | Elders):.....(%d | %d | %d)\n", 
+        printf("Used the Family Waterslide: (Children | Adults | Elders):.....(%d | %d | %d)  \n", 
         stats_num.children_used_Familywaterslide, stats_num.adults_used_Familywaterslide, stats_num.elders_used_Familywaterslide);
-        printf("Toboggan (Used | Quit on Line):...............................(%d | %d)     \n",
+        printf("Toboggan (Used | Quit on Line):...............................(%d | %d)       \n",
         stats_num.used_Toboggan, stats_num.quit_Toboggan);
-        printf("Snackbar (Used | Quit on Line):...............................(%d | %d)     \n",
+        printf("Snackbar (Used | Quit on Line):...............................(%d | %d)       \n",
         stats_num.used_Snack_bar, stats_num.quit_Snack_bar);
+        printf("Waterpolo (Played | Didnt Play):..............................(%d | %d)       \n",
+        stats_num.played_waterpolo, stats_num.not_played_waterpolo);
         printf("\n");
 
-        // Print final statistics to show the user
-        printf("Information about this day at the park:                                     \n");
-        printf("----------------------------------------------------------------------------\n");
-        printf("Average time on line for the park: %d(h) %d(m) %d(s)                        \n",
+        // Print Statistics related to time
+        printf("Wait times on the park:                                                        \n");
+        printf("-------------------------------------------------------------------------------\n");
+        printf("Average time on line for the park:............................%d(h) %d(m) %d(s)\n",
         final_stats.avg_time_on_line_park.hours, final_stats.avg_time_on_line_park.minutes, 
         final_stats.avg_time_on_line_park.seconds);
-        printf("Average time inside the park: %d(h) %d(m) %d(s)                             \n",
+        printf("Average time inside the park:.................................%d(h) %d(m) %d(s)\n",
         final_stats.avg_time_inside_park.hours, final_stats.avg_time_inside_park.minutes, 
         final_stats.avg_time_inside_park.seconds);
-        printf("Average time waiting for the toboggan: %d(h) %d(m) %d(s)                    \n",
+        printf("Average time waiting for the toboggan:........................%d(h) %d(m) %d(s)\n",
         final_stats.avg_time_on_line_toboggan.hours, final_stats.avg_time_on_line_toboggan.minutes, 
         final_stats.avg_time_on_line_toboggan.seconds);
-        printf("Average time waiting for the Snackbar: %d(h) %d(m) %d(s)                    \n",
+        printf("Average time waiting for the Snackbar:........................%d(h) %d(m) %d(s)\n",
         final_stats.avg_time_on_line_snack.hours, final_stats.avg_time_on_line_snack.minutes, 
         final_stats.avg_time_on_line_snack.seconds);
-        printf("Average time children waited for the family waterslide: %d(h) %d(m) %d(s)   \n", 
+        printf("Average time children waited for the family waterslide:.......%d(h) %d(m) %d(s)\n", 
         final_stats.avg_time_child_famWaterslide.hours, final_stats.avg_time_child_famWaterslide.minutes, 
         final_stats.avg_time_child_famWaterslide.seconds);
-        printf("Average time elders waited for the family waterslide: %d(h) %d(m) %d(s)     \n", 
+        printf("Average time elders waited for the family waterslide:.........%d(h) %d(m) %d(s)\n", 
         final_stats.avg_time_elder_famWaterslide.hours, final_stats.avg_time_elder_famWaterslide.minutes, 
         final_stats.avg_time_elder_famWaterslide.seconds);
-        printf("Average time adults waited for the family waterslide: %d(h) %d(m) %d(s)     \n", 
+        printf("Average time adults waited for the family waterslide:.........%d(h) %d(m) %d(s)\n", 
         final_stats.avg_time_adult_famWaterslide.hours, 
         final_stats.avg_time_adult_famWaterslide.minutes, final_stats.avg_time_adult_famWaterslide.seconds);
+        printf("Average time waiting to play waterpolo: ......................%d(h) %d(m) %d(s)\n", 
+        final_stats.avg_time_on_line_waterpolo.hours, 
+        final_stats.avg_time_on_line_waterpolo.minutes, final_stats.avg_time_on_line_waterpolo.seconds);
 
         // Flush the output to ensure it's displayed immediately
         fflush(stdout);
@@ -431,7 +474,8 @@ void decode_message(int code[4])
         printf("In the Family waterslide:...........%d                                      \n", live_stats.family_waterslide);
         printf("In Toboggan:........................%d                                      \n", live_stats.toboggan);
         printf("In the Snackbar:....................%d                                      \n", live_stats.Snackbar);
-        printf("\033[7A\033[0G\033[?25l"); // This print puts the cursor 7 lines up and on the first caracter of the line
+        printf("In the Waterpolo:...................%d                                      \n", live_stats.waterpolo);
+        printf("\033[8A\033[0G\033[?25l"); // This print puts the cursor 8 lines up and on the first caracter of the line
 
         // Flush the output to ensure it's displayed immediately
         fflush(stdout);
