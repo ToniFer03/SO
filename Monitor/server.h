@@ -26,6 +26,8 @@ struct statistics_time_simulator
     int sum_time_adult_famwaterslide_microseconds;
     int sum_time_on_line_waterpolo_seconds; // Sum of the time people waited for waterpolo
     int sum_time_on_line_waterpolo_microseconds;
+    int sum_time_to_signature_book_seconds; // Sum of the time people waited for the signature book
+    int sum_time_to_signature_book_microseconds;
 
 };
 
@@ -42,6 +44,8 @@ struct statistics_number_people
     int adults_used_Familywaterslide;
     int played_waterpolo;
     int not_played_waterpolo;
+    int signed_book;
+    int read_book;
 };
 
 struct statistics_live
@@ -52,6 +56,7 @@ struct statistics_live
     int toboggan;
     int Snackbar;
     int waterpolo;
+    int signature_book;
 };
 
 struct personalized_time
@@ -70,8 +75,7 @@ struct calculated_statistics{
     struct personalized_time avg_time_elder_famWaterslide;
     struct personalized_time avg_time_adult_famWaterslide;
     struct personalized_time avg_time_on_line_waterpolo;
-    
-
+    struct personalized_time avg_time_for_signature_book;
 };
 
 

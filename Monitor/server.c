@@ -92,36 +92,60 @@ void calculate_final_statistics()
     double temp_seconds = 0; // Temp variable
 
     // Calculate average time online to use the park (doesnt count the ones that couldnt use the park)
-    temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_park_seconds, stats_time.sum_time_on_line_park_microseconds, stats_num.used_park_today);
-    convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_park);
+    if(stats_num.used_park_today > 0){
+        temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_park_seconds, stats_time.sum_time_on_line_park_microseconds, stats_num.used_park_today);
+        convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_park);
+    }
 
     // Calculate average time inside the park
-    temp_seconds = calculate_avg_time(stats_time.sum_time_inside_park_seconds, stats_time.sum_time_inside_park_microseconds, stats_num.used_park_today);
-    convert_personalized_time(temp_seconds, &final_stats.avg_time_inside_park);
+    if(stats_num.used_park_today > 0){
+        temp_seconds = calculate_avg_time(stats_time.sum_time_inside_park_seconds, stats_time.sum_time_inside_park_microseconds, stats_num.used_park_today);
+        convert_personalized_time(temp_seconds, &final_stats.avg_time_inside_park);
+    }    
 
     // Calculate average time waiting fot the toboggan
-    temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_toboggan_seconds, stats_time.sum_time_on_line_toboggan_microseconds, stats_num.used_Toboggan);
-    convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_toboggan);
+    if(stats_num.used_Toboggan > 0){
+        temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_toboggan_seconds, stats_time.sum_time_on_line_toboggan_microseconds, stats_num.used_Toboggan);
+        convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_toboggan);
+    }    
 
     // Calculate the average time waiting for the snackbar
-    temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_snack_seconds, stats_time.sum_time_on_line_snack_microseconds, stats_num.used_Snack_bar);
-    convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_snack);
+    if(stats_num.used_Snack_bar > 0){
+        temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_snack_seconds, stats_time.sum_time_on_line_snack_microseconds, stats_num.used_Snack_bar);
+        convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_snack);
+    }    
+    
 
     // Calculate the average time children waited for the family waterslide
-    temp_seconds = calculate_avg_time(stats_time.sum_time_child_famwaterslide_seconds, stats_time.sum_time_child_famwaterslide_microseconds, stats_num.children_used_Familywaterslide);
-    convert_personalized_time(temp_seconds, &final_stats.avg_time_child_famWaterslide);
+    if(stats_num.children_used_Familywaterslide > 0){
+        temp_seconds = calculate_avg_time(stats_time.sum_time_child_famwaterslide_seconds, stats_time.sum_time_child_famwaterslide_microseconds, stats_num.children_used_Familywaterslide);
+        convert_personalized_time(temp_seconds, &final_stats.avg_time_child_famWaterslide);
+    }    
+    
 
     // Calculate the average time elders waited for the family waterslide
-    temp_seconds = calculate_avg_time(stats_time.sum_time_elder_famwaterslide_seconds, stats_time.sum_time_elder_famwaterslide_microseconds, stats_num.elders_used_Familywaterslide);
-    convert_personalized_time(temp_seconds, &final_stats.avg_time_elder_famWaterslide);
+    if(stats_num.elders_used_Familywaterslide > 0){
+        temp_seconds = calculate_avg_time(stats_time.sum_time_elder_famwaterslide_seconds, stats_time.sum_time_elder_famwaterslide_microseconds, stats_num.elders_used_Familywaterslide);
+        convert_personalized_time(temp_seconds, &final_stats.avg_time_elder_famWaterslide);
+    }    
 
     // Calculate the average time adults waited for the family waterslide
-    temp_seconds = calculate_avg_time(stats_time.sum_time_adult_famwaterslide_seconds, stats_time.sum_time_adult_famwaterslide_microseconds, stats_num.adults_used_Familywaterslide);
-    convert_personalized_time(temp_seconds, &final_stats.avg_time_adult_famWaterslide);
+    if(stats_num.adults_used_Familywaterslide > 0){
+        temp_seconds = calculate_avg_time(stats_time.sum_time_adult_famwaterslide_seconds, stats_time.sum_time_adult_famwaterslide_microseconds, stats_num.adults_used_Familywaterslide);
+        convert_personalized_time(temp_seconds, &final_stats.avg_time_adult_famWaterslide);
+    }    
 
     // Calculate the average time waiting for the waterpolo
-    temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_waterpolo_seconds, stats_time.sum_time_on_line_waterpolo_microseconds, stats_num.played_waterpolo);
-    convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_waterpolo);
+    if(stats_num.played_waterpolo > 0){
+        temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_waterpolo_seconds, stats_time.sum_time_on_line_waterpolo_microseconds, stats_num.played_waterpolo);
+        convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_waterpolo);
+    }    
+
+    if((stats_num.signed_book + stats_num.read_book) > 0)
+    {
+        temp_seconds = calculate_avg_time(stats_time.sum_time_to_signature_book_seconds, stats_time.sum_time_to_signature_book_microseconds, (stats_num.signed_book + stats_num.read_book));
+        convert_personalized_time(temp_seconds, &final_stats.avg_time_for_signature_book);
+    }
     
 }
 
@@ -196,6 +220,20 @@ void decode_number_people(int code[4])
                 printf("A person (%d) couldnt find a teammate for waterpolo                           \n", code[3]);
                 stats_num.not_played_waterpolo += 1;
             }
+            break;
+
+        case 5:
+            if(code[2] == 0)
+            {
+                printf("A person (%d) signed the signature book                                       \n", code[3]); // Code 3 refers to the person ID
+                stats_num.signed_book += 1;
+            }
+            else
+            {
+                printf("A person (%d) read the signature book                                         \n", code[3]);
+                stats_num.read_book += 1;
+            }  
+            break;          
 
         default:
             break;
@@ -289,13 +327,24 @@ void decode_time_people(int code[4])
                 break;
             
             case 8:
-                if(code[2] == 0) // Time adult was on line family waterslide (seconds)
+                if(code[2] == 0) // Time a person was on line waterpolo
                 {
                     stats_time.sum_time_on_line_waterpolo_seconds+= code[3];
                 } 
-                if(code[2] == 1) // Time adult was on line family waterslide (microseconds)
+                if(code[2] == 1) // Time a person was on line waterpolo
                 {
                     stats_time.sum_time_on_line_waterpolo_microseconds += code[3];
+                }
+                break;
+
+            case 9:
+                if(code[2] == 0) // Time person waited for the signature book
+                {
+                    stats_time.sum_time_to_signature_book_seconds+= code[3];
+                } 
+                if(code[2] == 1) // Time person waited for the signature book
+                {
+                    stats_time.sum_time_to_signature_book_microseconds += code[3];
                 }
                 break;
 
@@ -303,7 +352,6 @@ void decode_time_people(int code[4])
                 break;
         }
 }
-
 
 
 /*
@@ -379,6 +427,17 @@ void decode_live_stats(int code[4])
             }
             break;
 
+        case 5:
+            if(code[2] == 0)
+            {
+                printf("A person (%d) is going to the signature book section                          \n", code[3]); // Code 3 refers to the person ID
+                live_stats.signature_book += 1;
+            } else { 
+                printf("A person (%d) is exiting the signature book section                           \n", code[3]);
+                live_stats.signature_book -= 1;
+            }
+            break;
+
         default:
             break;
         }
@@ -431,6 +490,8 @@ void decode_message(int code[4])
         stats_num.used_Snack_bar, stats_num.quit_Snack_bar);
         printf("Waterpolo (Played | Didnt Play):..............................(%d | %d)       \n",
         stats_num.played_waterpolo, stats_num.not_played_waterpolo);
+        printf("Signature book (Write | Read):................................(%d | %d)       \n",
+        stats_num.signed_book, stats_num.read_book);
         printf("\n");
 
         // Print Statistics related to time
@@ -457,9 +518,12 @@ void decode_message(int code[4])
         printf("Average time adults waited for the family waterslide:.........%d(h) %d(m) %d(s)\n", 
         final_stats.avg_time_adult_famWaterslide.hours, 
         final_stats.avg_time_adult_famWaterslide.minutes, final_stats.avg_time_adult_famWaterslide.seconds);
-        printf("Average time waiting to play waterpolo: ......................%d(h) %d(m) %d(s)\n", 
+        printf("Average time waiting to play waterpolo:.......................%d(h) %d(m) %d(s)\n", 
         final_stats.avg_time_on_line_waterpolo.hours, 
         final_stats.avg_time_on_line_waterpolo.minutes, final_stats.avg_time_on_line_waterpolo.seconds);
+        printf("Average time waiting for the signature book:..................%d(h) %d(m) %d(s)\n", 
+        final_stats.avg_time_for_signature_book.hours, 
+        final_stats.avg_time_for_signature_book.minutes, final_stats.avg_time_for_signature_book.seconds);
 
         // Flush the output to ensure it's displayed immediately
         fflush(stdout);
@@ -475,7 +539,8 @@ void decode_message(int code[4])
         printf("In Toboggan:........................%d                                      \n", live_stats.toboggan);
         printf("In the Snackbar:....................%d                                      \n", live_stats.Snackbar);
         printf("In the Waterpolo:...................%d                                      \n", live_stats.waterpolo);
-        printf("\033[8A\033[0G\033[?25l"); // This print puts the cursor 8 lines up and on the first caracter of the line
+        printf("In the Signature book room:.........%d                                      \n", live_stats.signature_book);
+        printf("\033[9A\033[0G\033[?25l"); // This print puts the cursor 8 lines up and on the first caracter of the line
 
         // Flush the output to ensure it's displayed immediately
         fflush(stdout);

@@ -9,10 +9,15 @@
 #include "escrita_ficheiros.h"
 #include "cliente.h"
 
+// Consumer Producer Buffer
 #define BUFFER_SIZE 10
-
 int buffer[BUFFER_SIZE];
 int in = 0, out = 0;
+
+// Reader Writer Problem
+int last_signature = 0; // Critical section
+int numberReaders = 0;
+
 
 // semaphore
 sem_t entry_into_park;    // entry into the park
@@ -24,6 +29,7 @@ sem_t sem_snack_bar;
 sem_t snack_empty;
 sem_t snack_full;
 sem_t sem_water_polo;
+sem_t writers;
 
 // mutex
 pthread_mutex_t access_familyWaterSlide;
@@ -31,6 +37,7 @@ pthread_mutex_t access_toboggan;
 pthread_mutex_t snack;
 pthread_mutex_t lock;
 pthread_mutex_t water_polo_lock;
+pthread_mutex_t exclusion_reader_writers;
 
 // Global variable
 int nu = 1;
@@ -76,6 +83,7 @@ int main(int argc, char *argv[])
     sem_init(&snack_empty, 0, 10);
     sem_init(&snack_full, 0, 0);
     sem_init(&sem_water_polo, 0, 14);
+    sem_init(&writers, 0, 1);
 
     // initialize the mutex_locks
     pthread_mutex_init(&access_familyWaterSlide, NULL);
@@ -83,6 +91,7 @@ int main(int argc, char *argv[])
     pthread_mutex_init(&snack, NULL);
     pthread_mutex_init(&lock, NULL);
     pthread_mutex_init(&water_polo_lock, NULL);
+    pthread_mutex_init(&exclusion_reader_writers, NULL);
 
     // Create a struct to pass to the Thread
     struct ThreadArgs args;
@@ -161,6 +170,7 @@ int main(int argc, char *argv[])
     sem_destroy(&snack_empty);
     sem_destroy(&snack_full);
     sem_destroy(&sem_water_polo);
+    sem_destroy(&writers);
 
     // deleting mutex
     pthread_mutex_destroy(&access_familyWaterSlide);
@@ -168,6 +178,7 @@ int main(int argc, char *argv[])
     pthread_mutex_destroy(&snack);
     pthread_mutex_destroy(&lock);
     pthread_mutex_destroy(&water_polo_lock);
+    pthread_mutex_destroy(&exclusion_reader_writers);
 
     return 0;
 }
@@ -445,6 +456,59 @@ void water_polo(struct Person_info pessoa_thread, int clientSocket)
 }
 
 
+void write_signature(struct Person_info pessoa_thread, int clientSocket)
+{
+    sem_wait(&writers);
+    last_signature = pessoa_thread.id;
+    printf("Assinei o livro %d \n", last_signature);
+    usleep(100000);
+    sem_post(&writers);
+}
+
+
+void read_signature(struct Person_info pessoa_thread, int clientSocket)
+{
+    pthread_mutex_lock(&exclusion_reader_writers);
+    numberReaders += 1;
+    if(numberReaders == 1)
+    {
+        sem_wait(&writers);
+    }
+    pthread_mutex_unlock(&exclusion_reader_writers);
+
+    printf("A ultima assinatura no livro é %d \n", last_signature);
+    usleep(50000);
+
+    pthread_mutex_lock(&exclusion_reader_writers);
+    numberReaders -= 1;
+    if(numberReaders == 0){
+        sem_post(&writers);
+    }
+    pthread_mutex_unlock(&exclusion_reader_writers);
+}
+
+
+void signature_book(struct Person_info pessoa_thread, int clientSocket)
+{
+    double randomValue = ((double)rand() / RAND_MAX) * 100.0;
+
+    gettimeofday(&pessoa_thread.time_start_signature_book, NULL);
+    if(randomValue >= 75)
+    {
+        write_signature(pessoa_thread, clientSocket);
+        send_message(0, 5, 0, pessoa_thread.id, clientSocket);
+    } 
+    else 
+    {
+        read_signature(pessoa_thread, clientSocket);
+        send_message(0, 5, 1, pessoa_thread.id, clientSocket);
+    }
+
+    gettimeofday(&pessoa_thread.time_exit_signature_book, NULL);
+    send_time_monitor(1, 9, pessoa_thread.time_start_signature_book, pessoa_thread.time_exit_signature_book, clientSocket);
+}
+
+
 // function to manage the entry intro the atractions
 void manageAtractions(struct Person_info pessoa_thread, int clientSocket)
 {
@@ -457,7 +521,7 @@ void manageAtractions(struct Person_info pessoa_thread, int clientSocket)
         // Will keep giving a random atraction until its one that he hasnt visited
         do
         {
-            nextAtraction = rand() % 4;
+            nextAtraction = rand() % 5;
         } while (pessoa_thread.visited_Atractions[nextAtraction]);
 
         // Sends the person to the atraction that was choosen
@@ -486,6 +550,13 @@ void manageAtractions(struct Person_info pessoa_thread, int clientSocket)
             water_polo(pessoa_thread, clientSocket);
             send_message(2, 4, 1, pessoa_thread.id, clientSocket); // Person exited the waterpolo
             pessoa_thread.visited_Atractions[3] = true;
+            break;
+        case 4:
+            send_message(2, 5, 0, pessoa_thread.id, clientSocket); // Person is going to the signature book room
+            signature_book(pessoa_thread, clientSocket);
+            pessoa_thread.visited_Atractions[4] = true;
+            send_message(2, 5, 1, pessoa_thread.id, clientSocket); // Person is exiting the signature book room
+            break;
         default:
             break;
         }
@@ -504,6 +575,10 @@ void manageAtractions(struct Person_info pessoa_thread, int clientSocket)
         }
 
         if(!pessoa_thread.visited_Atractions[3]){
+            continue;
+        }
+
+        if(!pessoa_thread.visited_Atractions[4]){
             continue;
         }
 
