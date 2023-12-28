@@ -1,7 +1,7 @@
 simulador: simulador.o leitor_ficheiros.o escrita_ficheiros.o cliente.o
 	gcc -g -lpthread simulador.o leitor_ficheiros.o escrita_ficheiros.o cliente.o -o simulador
-	./simulador Config/simulador_config.txt
 	make clean
+	./simulador Config/simulador_config.txt
 
 simulador.o: simulador.c simulador.h leitor_ficheiros.h
 	gcc -g -c simulador.c

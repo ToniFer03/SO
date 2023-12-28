@@ -9,8 +9,12 @@
 #include "cliente.h"
 #include "escrita_ficheiros.h"
 
+
+
 /*
-    Function responsible for connection to the server
+   Function: connect_server
+   Purpose:  Establishes a connection to the server.
+   Returns:  The client socket for communication with the server.
 */
 int connect_server()
 {
@@ -38,14 +42,22 @@ int connect_server()
 }
 
 
+
 /*
-    Funtion responsible for sending the codes for the server to decode. It receives the code to be send
-    (and INT) and the socket to send it too.
+   Function: send_message
+   Purpose:  Sends a message to the server with specified information.
+   Parameters:
+      - code1: The first code in the message.
+      - code2: The second code in the message.
+      - code3: The third code in the message.
+      - code4: The fourth code in the message.
+      - client_socket: The client socket for communication with the server.
 */
-void send_message(int codeMessage, int atractionNumber, int quitAtraction, int id, int client_socket)
+void send_message(int code1, int code2, int code3, int code4, int client_socket)
 {
-    int code[4] = {codeMessage, atractionNumber, quitAtraction, id};
+    int code[4] = {code1, code2, code3, code4};
 
     // Send the integer code to the server
     int bytes_sent = send(client_socket, &code, sizeof(code), 0);
 }
+

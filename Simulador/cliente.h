@@ -6,6 +6,6 @@
 
 // Definition of functions
 int connect_server();
-void send_message(int codeMessage, int atractionNumber, int quitAtraction, int id, int client_socket);
+void send_message(int code1, int code2, int code3, int code4, int client_socket);
 
 #endif // CLIENTE_H

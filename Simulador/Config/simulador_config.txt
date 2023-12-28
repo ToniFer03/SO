@@ -1,11 +1,19 @@
 # Configurações das Pessoas
 Probability_Being_Elder = 20.5
 Probability_Being_Child = 18.8
+Probability_Being_Writer = 25
 
 #Configuração da Simulação
 Simulation_duration_(seconds) = 60
 Time_being_simulated_(Hours) = 8
-Max_People_Park = 200
+Max_People_Park = 20
 Max_People_Toboggan = 50
 Max_People_Snack_Bar = 50
-Threads_to_create = 1000
+Threads_to_create = 100
+Timeout_waterpolo_(Seconds) = 5
+Wait_time_FamilyWaterslide_(Microseconds) = 100000
+Wait_time_Toboggan_(Microseconds) = 200000
+Wait_time_snack_bar_(Microseconds) = 200000
+Wait_time_waterpolo_(Microseconds) = 100000
+Wait_time_readsignature_(Microseconds) = 50000
+Wait_time_writesignature_(Microseconds) = 100000

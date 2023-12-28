@@ -10,7 +10,6 @@
 #include "cliente.h"
 
 // Consumer Producer Buffer
-#define BUFFER_SIZE 10
 int buffer[BUFFER_SIZE];
 int in = 0, out = 0;
 
@@ -80,9 +79,9 @@ int main(int argc, char *argv[])
     sem_init(&sem_priority_elder, 0, 1);
     sem_init(&sem_toboggan, 0, config.max_people_toboggan);
     sem_init(&sem_snack_bar, 0, config.max_people_snack_bar);
-    sem_init(&snack_empty, 0, 10);
+    sem_init(&snack_empty, 0, BUFFER_SIZE);
     sem_init(&snack_full, 0, 0);
-    sem_init(&sem_water_polo, 0, 14);
+    sem_init(&sem_water_polo, 0, WATERPOLO_TEAM);
     sem_init(&writers, 0, 1);
 
     // initialize the mutex_locks
@@ -232,7 +231,8 @@ int getRandomNumber(int limit)
       - config: Pointer to the Simulador_config structure containing simulation parameters.
       - client_socket: The socket for communication with the client.
 */
-void calculateTimeScale(struct Simulador_config * config, int client_socket){
+void calculateTimeScale(struct Simulador_config * config, int client_socket)
+{
     int temp_real_time = config->time_being_simulated * 3600; //turns the hours into seconds
     send_message(100, temp_real_time/config->simulation_duration, -1, -1, client_socket);
 }
@@ -311,9 +311,11 @@ void send_time_monitor(int code0, int code1, struct timeval starttime, struct ti
     a messsage to the monitor, based on their age group with the time they waited in line.
     After exiting the critical section they post the semaphores on the priority order. 
 */
-void familyWaterSlide(struct Person_info pessoa_thread, int clientSocket)
+void familyWaterSlide(struct Person_info pessoa_thread, struct ThreadArgs *args)
 {
+    char str[75];
     gettimeofday(&pessoa_thread.time_start_waiting_famwaterslide, NULL); //Get the time person entered line
+
     if (pessoa_thread.faixa_etaria == 0) // criança
     {
         sem_wait(&sem_priority_child);
@@ -332,21 +334,33 @@ void familyWaterSlide(struct Person_info pessoa_thread, int clientSocket)
 
     if (pessoa_thread.faixa_etaria == 0) // criança
     {
-        send_message(0, 2, 0, pessoa_thread.id, clientSocket);
-        send_time_monitor(1, 5, pessoa_thread.time_start_waiting_famwaterslide, pessoa_thread.time_exit_waiting_famWaterslide, clientSocket);
+        sprintf(str, "Criança %d usou o Family Waterslide", pessoa_thread.id);
+        logMessage(args->logfile, ROUTINE, str);
+        str[75] = '\0'; // Resets the str for later use
+
+        send_message(0, 2, 0, pessoa_thread.id, args->client_socket);
+        send_time_monitor(1, 5, pessoa_thread.time_start_waiting_famwaterslide, pessoa_thread.time_exit_waiting_famWaterslide, args->client_socket);
     }
     else if (pessoa_thread.faixa_etaria == 2) // Idoso
     {
-        send_message(0, 2, 1, pessoa_thread.id, clientSocket);
-        send_time_monitor(1, 6, pessoa_thread.time_start_waiting_famwaterslide, pessoa_thread.time_exit_waiting_famWaterslide, clientSocket);
+        sprintf(str, "Idoso %d usou o Family Waterslide", pessoa_thread.id);
+        logMessage(args->logfile, ROUTINE, str);
+        str[75] = '\0'; // Resets the str for later use
+
+        send_message(0, 2, 1, pessoa_thread.id, args->client_socket);
+        send_time_monitor(1, 6, pessoa_thread.time_start_waiting_famwaterslide, pessoa_thread.time_exit_waiting_famWaterslide, args->client_socket);
     }
     else // Adulto
     {
-        send_message(0, 2, 2, pessoa_thread.id, clientSocket);
-        send_time_monitor(1, 7, pessoa_thread.time_start_waiting_famwaterslide, pessoa_thread.time_exit_waiting_famWaterslide, clientSocket);
+        sprintf(str, "Adulto %d usou o Family Waterslide", pessoa_thread.id);
+        logMessage(args->logfile, ROUTINE, str);
+        str[75] = '\0'; // Resets the str for later use
+
+        send_message(0, 2, 2, pessoa_thread.id, args->client_socket);
+        send_time_monitor(1, 7, pessoa_thread.time_start_waiting_famwaterslide, pessoa_thread.time_exit_waiting_famWaterslide, args->client_socket);
     }
 
-    usleep(100000); 
+    usleep(args->config.wait_time_familyWaterslide); 
     pthread_mutex_unlock(&access_familyWaterSlide);
 
     if (pessoa_thread.faixa_etaria == 0) // criança
@@ -382,15 +396,19 @@ void familyWaterSlide(struct Person_info pessoa_thread, int clientSocket)
     If the person decidedes to stay, he will wait until the toboggan in free to use, sendind the statistics of use 
     and wait time on accessing the critical section
 */
-void toboggan(struct Person_info pessoa_thread, int clientSocket)
+void toboggan(struct Person_info pessoa_thread, struct ThreadArgs *args)
 {
+    char str[75]; // For the log messages
     bool waited_on_line = false;
 
     // if sem_trywait returns a non-zero value, it means the semaphore is zero (the queue is full), so the person leaves.
     if (sem_trywait(&sem_toboggan) != 0)
     {
-        printf("Person %d left the toboggan (Queue is full).\n", pessoa_thread.id);
-        send_message(0, 1, 1, pessoa_thread.id, clientSocket); // Person gave up on toboggan
+        sprintf(str, "Pessoa %d saiu do toboggan (Fila cheia)", pessoa_thread.id);
+        logMessage(args->logfile, ROUTINE, str);
+        str[75] = '\0'; // Resets the str for later use
+
+        send_message(0, 1, 1, pessoa_thread.id, args->client_socket); // Person gave up on toboggan
         return;
     }
 
@@ -400,36 +418,56 @@ void toboggan(struct Person_info pessoa_thread, int clientSocket)
         int giveUpChance = getRandomNumber(99);
         if (giveUpChance > pessoa_thread.patience)
         {
-            printf("Person %d left the toboggan (Gave up).\n", pessoa_thread.id);
-            send_message(0, 1, 1, pessoa_thread.id, clientSocket); // Person gave up on toboggan
+            sprintf(str, "Pessoa %d desistiu do toboggan por falta de paciência (%d > %d)", 
+            pessoa_thread.id,
+            giveUpChance,
+            pessoa_thread.patience);
+            logMessage(args->logfile, ROUTINE, str);
+            str[75] = '\0'; // Resets the str for later use
+
+            send_message(0, 1, 1, pessoa_thread.id, args->client_socket); // Person gave up on toboggan
             sem_post(&sem_toboggan);
             return;
         }
-        printf("Person %d is waiting for the toboggan.\n", pessoa_thread.id);
+
+        sprintf(str, "Pessoa %d esta a espera que o toboggan fique disponivel", pessoa_thread.id);
+        logMessage(args->logfile, ROUTINE, str);
+        str[75] = '\0'; // Resets the str for later use
+        
         gettimeofday(&pessoa_thread.time_start_waiting_toboggan, NULL);
         waited_on_line = true;
         pthread_mutex_lock(&access_toboggan);
     } 
 
 
-    // There is a problem that if the toboggan is not in use, it send 0 as start time and sends the end time, so the 
-    // time in the other side is wrong
-
-    printf("Person %d is using the toboggan.\n", pessoa_thread.id);
+    sprintf(str, "Pessoa %d esta a usar o toboggan", pessoa_thread.id);
+    logMessage(args->logfile, ROUTINE, str);
+    str[75] = '\0'; // Resets the str for later use
 
     if(waited_on_line){
         // Sent time waiting in line for toboggan
         gettimeofday(&pessoa_thread.time_exit_waiting_toboggan, NULL);
-        send_time_monitor(1, 2, pessoa_thread.time_start_waiting_toboggan, pessoa_thread.time_exit_waiting_toboggan, clientSocket);
+        send_time_monitor(1, 2, pessoa_thread.time_start_waiting_toboggan, pessoa_thread.time_exit_waiting_toboggan, args->client_socket);
+
+        sprintf(str, "Pessoa %d teve de esperar para usar o toboggan", pessoa_thread.id);
+        logMessage(args->logfile, ROUTINE, str);
+        str[75] = '\0'; // Resets the str for later use
     } 
     else // In the case the person didnt wait, it just sends 0 as the time on line
     {
-        send_time_monitor(1, 2, pessoa_thread.time_start_waiting_toboggan, pessoa_thread.time_start_waiting_toboggan, clientSocket);
+        send_time_monitor(1, 2, pessoa_thread.time_start_waiting_toboggan, pessoa_thread.time_start_waiting_toboggan, args->client_socket);
+        sprintf(str, "Pessoa %d pode entrar sem esperar para usar o toboggan", pessoa_thread.id);
+        logMessage(args->logfile, ROUTINE, str);
+        str[75] = '\0'; // Resets the str for later use
     }
 
-    usleep(200000); // sleep for 0.5s
-    printf("Person %d is done using the toboggan.\n", pessoa_thread.id);
-    send_message(0, 1, 0, pessoa_thread.id, clientSocket); // Person used the toboggan
+    usleep(args->config.wait_time_toboggan);
+
+    sprintf(str, "Pessoa %d acabou de usar o toboggan", pessoa_thread.id);
+    logMessage(args->logfile, ROUTINE, str);
+    str[75] = '\0'; // Resets the str for later use
+    
+    send_message(0, 1, 0, pessoa_thread.id, args->client_socket); // Person used the toboggan
 
     pthread_mutex_unlock(&access_toboggan);
     sem_post(&sem_toboggan);
@@ -455,8 +493,10 @@ void toboggan(struct Person_info pessoa_thread, int clientSocket)
     
     
 */
-void snack_bar(struct Person_info pessoa_thread, int clientSocket)
+void snackbar(struct Person_info pessoa_thread, struct ThreadArgs *args)
 {
+    char str[75];
+
     /*
         If there are people on the queue, for the snackbar, the patience of the person
         is tested to see if it will give up or not
@@ -466,27 +506,40 @@ void snack_bar(struct Person_info pessoa_thread, int clientSocket)
         int giveUpChance = getRandomNumber(99);
         if (giveUpChance > pessoa_thread.patience)
         {
-            printf("Person %d left the bar (Gave up).\n", pessoa_thread.id);
-            send_message(0, 3, 1, pessoa_thread.id, clientSocket); // Message the person gave up
+            sprintf(str, "Pessoa %d saiu do Snackbar por falta de paciência (%d > %d)", 
+            pessoa_thread.id, 
+            giveUpChance, 
+            pessoa_thread.patience);
+            logMessage(args->logfile, ROUTINE, str);
+            str[75] = '\0'; // Resets the str for later use
+            
+            send_message(0, 3, 1, pessoa_thread.id, args->client_socket); // Message the person gave up
             return;
         }
         sem_wait(&sem_snack_bar);
     }
 
     gettimeofday(&pessoa_thread.time_start_waiting_snack, NULL);
-    printf("Person %d is waiting at the bar.\n", pessoa_thread.id); // Print when a person is waiting
+    
+    sprintf(str, "Pessoa %d esta na fila do Snackbar", pessoa_thread.id);
+    logMessage(args->logfile, ROUTINE, str);
+    str[75] = '\0'; // Resets the str for later use
 
     sem_wait(&snack_full);
     pthread_mutex_lock(&snack);
     int drink = buffer[out];
     out = (out + 1) % BUFFER_SIZE; // This makes it circular
-    send_message(0, 3, 0, pessoa_thread.id, clientSocket); // Message the person got a snack
+    send_message(0, 3, 0, pessoa_thread.id, args->client_socket); // Message the person got a snack
     
     // Send the wait time for the snack
     gettimeofday(&pessoa_thread.time_exit_waiting_snack, NULL);
-    send_time_monitor(1, 4, pessoa_thread.time_start_waiting_snack, pessoa_thread.time_exit_waiting_snack, clientSocket);
+    send_time_monitor(1, 4, pessoa_thread.time_start_waiting_snack, pessoa_thread.time_exit_waiting_snack, args->client_socket);
     
-    printf("Person %d got a snack.\n", pessoa_thread.id);
+    sprintf(str, "Pessoa %d conseguio o seu drink (%d)", 
+    pessoa_thread.id,
+    drink);
+    logMessage(args->logfile, ROUTINE, str);
+    str[75] = '\0'; // Resets the str for later use
     
     pthread_mutex_unlock(&snack);
     sem_post(&snack_empty);
@@ -508,8 +561,9 @@ void snack_bar(struct Person_info pessoa_thread, int clientSocket)
     the variable and exits the queue. 
     If sucessfull, plays waterpolo ands sends statistics to the monitor.
 */
-void water_polo(struct Person_info pessoa_thread, int clientSocket)
+void waterpolo(struct Person_info pessoa_thread, struct ThreadArgs *args)
 {
+    char str[75];
     // Signal that a player has entered
     sem_wait(&sem_water_polo);
 
@@ -521,15 +575,19 @@ void water_polo(struct Person_info pessoa_thread, int clientSocket)
     pthread_mutex_unlock(&water_polo_lock);
 
     // While waiting for 14 players
-    while (players_water_polo < 14)
+    while (players_water_polo < WATERPOLO_TEAM)
     {
-        if(temp_entry_time + 5 < time(NULL))
+        if((temp_entry_time + args->config.timeout_waterpolo) < time(NULL))
         {
             sem_post(&sem_water_polo);
             pthread_mutex_lock(&water_polo_lock);
             players_water_polo--;
             pthread_mutex_unlock(&water_polo_lock);
-            send_message(0, 4, 1, pessoa_thread.id, clientSocket); // Didnt play waterpolo
+            send_message(0, 4, 1, pessoa_thread.id, args->client_socket); // Didnt play waterpolo
+
+            sprintf(str, "Pessoa %d não encontrou equipa para o waterpolo antes do timeout", pessoa_thread.id);
+            logMessage(args->logfile, ROUTINE, str);
+            str[75] = '\0'; // Resets the str for later use
             return;
         }
         else {
@@ -539,13 +597,17 @@ void water_polo(struct Person_info pessoa_thread, int clientSocket)
     }
 
     gettimeofday(&pessoa_thread.time_exit_waiting_waterpolo, NULL);
-    send_time_monitor(1, 8, pessoa_thread.time_start_waiting_waterpolo, pessoa_thread.time_exit_waiting_waterpolo, clientSocket);
+    send_time_monitor(1, 8, pessoa_thread.time_start_waiting_waterpolo, pessoa_thread.time_exit_waiting_waterpolo, args->client_socket);
 
-    usleep(100000); // Time to simulate using the atraction
-    send_message(0, 4, 0, pessoa_thread.id, clientSocket);
+    usleep(args->config.Wait_time_waterpolo); // Time to simulate using the atraction
+    send_message(0, 4, 0, pessoa_thread.id, args->client_socket);
     pthread_mutex_lock(&water_polo_lock);
     players_water_polo--;
     pthread_mutex_unlock(&water_polo_lock);
+
+    sprintf(str, "Pessoa %d jogou waterpolo em equipa", pessoa_thread.id);
+    logMessage(args->logfile, ROUTINE, str);
+    str[75] = '\0'; // Resets the str for later use
 
     // Signal that a player has exited
     sem_post(&sem_water_polo);
@@ -563,12 +625,11 @@ void water_polo(struct Person_info pessoa_thread, int clientSocket)
     How it works: Waits for the semaphore saying that it can write, after that 
     assigns its id to the global variable last signature, and posts the semaphore
 */
-void write_signature(struct Person_info pessoa_thread, int clientSocket)
+void write_signature(struct Person_info pessoa_thread, struct ThreadArgs *args)
 {
     sem_wait(&writers);
     last_signature = pessoa_thread.id;
-    printf("Assinei o livro %d \n", last_signature);
-    usleep(100000);
+    usleep(args->config.wait_time_sign_signature);
     sem_post(&writers);
 }
 
@@ -587,7 +648,7 @@ void write_signature(struct Person_info pessoa_thread, int clientSocket)
     are reading. If a thread puts the number of readers at 0, the semaphore 
     for the writers is unlocked and no function can read until a writers posts.
 */
-void read_signature(struct Person_info pessoa_thread, int clientSocket)
+void read_signature(struct Person_info pessoa_thread, struct ThreadArgs *args)
 {
     pthread_mutex_lock(&exclusion_reader_writers);
     numberReaders += 1;
@@ -597,8 +658,7 @@ void read_signature(struct Person_info pessoa_thread, int clientSocket)
     }
     pthread_mutex_unlock(&exclusion_reader_writers);
 
-    printf("A ultima assinatura no livro é %d \n", last_signature);
-    usleep(50000);
+    usleep(args->config.wait_time_read_signature);
 
     pthread_mutex_lock(&exclusion_reader_writers);
     numberReaders -= 1;
@@ -617,24 +677,33 @@ void read_signature(struct Person_info pessoa_thread, int clientSocket)
       - pessoa_thread: Information about the person including ID and timing.
       - clientSocket: The socket for communication with the client.
 */
-void signature_book(struct Person_info pessoa_thread, int clientSocket)
+void signature_book(struct Person_info pessoa_thread, struct ThreadArgs *args)
 {
+    char str[75];
     double randomValue = ((double)rand() / RAND_MAX) * 100.0;
 
     gettimeofday(&pessoa_thread.time_start_signature_book, NULL);
-    if(randomValue >= 75)
+    if(randomValue <= args->config.probability_being_writer)
     {
-        write_signature(pessoa_thread, clientSocket);
-        send_message(0, 5, 0, pessoa_thread.id, clientSocket);
+        sprintf(str, "Pessoa %d escolheu assinar o livro", pessoa_thread.id);
+        logMessage(args->logfile, ROUTINE, str);
+        str[75] = '\0'; // Resets the str for later use
+        
+        write_signature(pessoa_thread, args);
+        send_message(0, 5, 0, pessoa_thread.id, args->client_socket);
     } 
     else 
     {
-        read_signature(pessoa_thread, clientSocket);
-        send_message(0, 5, 1, pessoa_thread.id, clientSocket);
+        sprintf(str, "Pessoa %d decidiu apenas ler o livro", pessoa_thread.id);
+        logMessage(args->logfile, ROUTINE, str);
+        str[75] = '\0'; // Resets the str for later use
+
+        read_signature(pessoa_thread, args);
+        send_message(0, 5, 1, pessoa_thread.id, args->client_socket);
     }
 
     gettimeofday(&pessoa_thread.time_exit_signature_book, NULL);
-    send_time_monitor(1, 9, pessoa_thread.time_start_signature_book, pessoa_thread.time_exit_signature_book, clientSocket);
+    send_time_monitor(1, 9, pessoa_thread.time_start_signature_book, pessoa_thread.time_exit_signature_book, args->client_socket);
 }
 
 
@@ -658,8 +727,9 @@ void signature_book(struct Person_info pessoa_thread, int clientSocket)
     park
     
 */
-void manageAtractions(struct Person_info pessoa_thread, int clientSocket)
+void manageAtractions(struct Person_info pessoa_thread, struct ThreadArgs *args)
 {
+    char str[75]; // For the log messages
     bool stay_on_park = true;
     int nextAtraction = 0;
 
@@ -675,37 +745,61 @@ void manageAtractions(struct Person_info pessoa_thread, int clientSocket)
         // Sends the person to the atraction that was choosen
         switch (nextAtraction)
         {
-        case 0:
-            send_message(2, 2, 0, pessoa_thread.id, clientSocket); // Person entered family waterslide
-            familyWaterSlide(pessoa_thread, clientSocket);
-            send_message(2, 2, 1, pessoa_thread.id, clientSocket); // Person exited family waterslide
+        case 0: // Family Waterslide
+            sprintf(str, "Pessoa %d visitou o Family Waterslide", pessoa_thread.id);
+            logMessage(args->logfile, ROUTINE, str);
+            str[75] = '\0'; // Resets the str for later use
+
+            send_message(2, 2, 0, pessoa_thread.id, args->client_socket); // Person entered family waterslide
+            familyWaterSlide(pessoa_thread, args);
+            send_message(2, 2, 1, pessoa_thread.id, args->client_socket); // Person exited family waterslide
             pessoa_thread.visited_Atractions[0] = true;
             break;
         case 1:
-            send_message(2, 1, 0, pessoa_thread.id, clientSocket); // Person entered toboggan
-            toboggan(pessoa_thread, clientSocket);
-            send_message(2, 1, 1, pessoa_thread.id, clientSocket); // Person exited toboggan
+            sprintf(str, "Pessoa %d visitou o Toboggan", pessoa_thread.id);
+            logMessage(args->logfile, ROUTINE, str);
+            str[75] = '\0'; // Resets the str for later use
+
+            send_message(2, 1, 0, pessoa_thread.id, args->client_socket); // Person entered toboggan
+            toboggan(pessoa_thread, args);
+            send_message(2, 1, 1, pessoa_thread.id, args->client_socket); // Person exited toboggan
             pessoa_thread.visited_Atractions[1] = true;
             break;
         case 2:
-            send_message(2, 3, 0, pessoa_thread.id, clientSocket); // Person entered Snackbar
-            snack_bar(pessoa_thread, clientSocket);
-            send_message(2, 3, 1, pessoa_thread.id, clientSocket); // Person exited Snackbar
+            sprintf(str, "Pessoa %d visitou o Snackbar", pessoa_thread.id);
+            logMessage(args->logfile, ROUTINE, str);
+            str[75] = '\0'; // Resets the str for later use
+
+            send_message(2, 3, 0, pessoa_thread.id, args->client_socket); // Person entered Snackbar
+            snackbar(pessoa_thread, args);
+            send_message(2, 3, 1, pessoa_thread.id, args->client_socket); // Person exited Snackbar
             pessoa_thread.visited_Atractions[2] = true;
             break;
         case 3:
-            send_message(2, 4, 0, pessoa_thread.id, clientSocket); // Person entered the waterpolo
-            water_polo(pessoa_thread, clientSocket);
-            send_message(2, 4, 1, pessoa_thread.id, clientSocket); // Person exited the waterpolo
+            sprintf(str, "Pessoa %d visitou o Waterpolo", pessoa_thread.id);
+            logMessage(args->logfile, ROUTINE, str);
+            str[75] = '\0'; // Resets the str for later use
+
+            send_message(2, 4, 0, pessoa_thread.id, args->client_socket); // Person entered the waterpolo
+            waterpolo(pessoa_thread, args);
+            send_message(2, 4, 1, pessoa_thread.id, args->client_socket); // Person exited the waterpolo
             pessoa_thread.visited_Atractions[3] = true;
             break;
         case 4:
-            send_message(2, 5, 0, pessoa_thread.id, clientSocket); // Person is going to the signature book room
-            signature_book(pessoa_thread, clientSocket);
+            sprintf(str, "Pessoa %d visitou o livro de assinaturas", pessoa_thread.id);
+            logMessage(args->logfile, ROUTINE, str);
+            str[75] = '\0'; // Resets the str for later use
+
+            send_message(2, 5, 0, pessoa_thread.id, args->client_socket); // Person is going to the signature book room
+            signature_book(pessoa_thread, args);
             pessoa_thread.visited_Atractions[4] = true;
-            send_message(2, 5, 1, pessoa_thread.id, clientSocket); // Person is exiting the signature book room
+            send_message(2, 5, 1, pessoa_thread.id, args->client_socket); // Person is exiting the signature book room
             break;
         default:
+            sprintf(str, "Pessoa %d tentou visitar uma atração que não existe", pessoa_thread.id);
+            logMessage(args->logfile, ERROR, str);
+            str[75] = '\0'; // Resets the str for later use
+
             break;
         }
 
@@ -742,9 +836,11 @@ void manageAtractions(struct Person_info pessoa_thread, int clientSocket)
    Function: barista_thread
    Purpose:  Special thread to simulate the producer in the consumer producer problem
 */
-void *barista_thread()
+void *barista_thread(void *arg)
 {
+    struct ThreadArgs *args = (struct ThreadArgs *)arg; // Cast the argument to the appropriate structure
     int drink = 1;
+
     while (1)
     {
         sem_wait(&snack_empty);
@@ -755,7 +851,7 @@ void *barista_thread()
         drink++;
         pthread_mutex_unlock(&snack);
         sem_post(&snack_full);
-        usleep(200000);
+        usleep(args->config.wait_time_snackbar);
     }
 }
 
@@ -768,6 +864,7 @@ void *barista_thread()
 */
 void *person_thread(void *arg)
 {
+    char str[75]; // For the log messages
     struct ThreadArgs *args = (struct ThreadArgs *)arg; // Cast the argument to the appropriate structure
     struct Person_info pessoa_thread;                   // Create the person_info to hold information about the person
 
@@ -775,6 +872,19 @@ void *person_thread(void *arg)
     for(int i = 0; i < 10; i++){
         pessoa_thread.visited_Atractions[i] = false;
     }
+
+    // lock for mutual exclusion when giving an id to the thread
+    pthread_mutex_lock(&lock);
+
+    // Writing to the log file that the person was created
+    sprintf(str, "Pessoa %d criada com sucesso", nu);
+    logMessage(args->logfile, ROUTINE, str);
+    str[75] = '\0'; // Resets the str for later use
+
+    pessoa_thread.patience = rand() % 51 + 30;
+    pessoa_thread.id = nu;
+    nu++;
+    pthread_mutex_unlock(&lock);
 
     /*
         This part of the code creates a unique seed for every thread so that every
@@ -784,19 +894,11 @@ void *person_thread(void *arg)
     unsigned int seed = (unsigned int)pthread_self();
     srand(seed);
 
-    // lock for mutual exclusion when giving an id to the thread
-    pthread_mutex_lock(&lock);
-    char str[50];
-    sprintf(str, "Pessoa %d criada com sucesso", nu);
-
-    // Writing to the log file the person was created
-    logMessage(args->logfile, ROUTINE, str);
-    pessoa_thread.patience = rand() % 51 + 30;
-    pessoa_thread.id = nu;
-    nu++;
-    pthread_mutex_unlock(&lock);
-
     determineAgeGroup(args, &pessoa_thread); // Call the function to assign the person an age group
+    sprintf(str, "Pessoa %d obteve a faixa etaria %d", pessoa_thread.id, pessoa_thread.faixa_etaria);
+    logMessage(args->logfile, ROUTINE, str);
+    str[75] = '\0'; // Resets the str for later use
+
 
     // Semaphore that handles how many people are allowed on the park
     gettimeofday(&pessoa_thread.time_on_line_park, NULL); // get time function got on line for the park
@@ -806,12 +908,16 @@ void *person_thread(void *arg)
     /*
         This will check if the time stipulated for simulation has elapsed or not, if yes the thread will not enter the park
     */
-    if(args->start_time + args->config.simulation_duration > time(NULL)){ 
+    if(args->start_time + args->config.simulation_duration > time(NULL)){
+        sprintf(str, "Pessoa %d entrou no parque com sucesso", pessoa_thread.id);
+        logMessage(args->logfile, ROUTINE, str);
+        str[75] = '\0'; // Resets the str for later use
+
         gettimeofday(&pessoa_thread.time_entry_park, NULL); // get time function entered the park
         send_time_monitor(1, 0, pessoa_thread.time_on_line_park, pessoa_thread.time_entry_park, args->client_socket); // Send time on the line
         
         send_message(2, 0, 1, pessoa_thread.id, args->client_socket); // Message person entered the park
-        manageAtractions(pessoa_thread, args->client_socket); //function that manages the entry into attractions
+        manageAtractions(pessoa_thread, args); //function that manages the entry into attractions
         sem_post(&entry_into_park); 
         send_message(2, 0, 2, pessoa_thread.id, args->client_socket); // Message the person exited the park
         
@@ -819,7 +925,10 @@ void *person_thread(void *arg)
         send_time_monitor(1, 1, pessoa_thread.time_entry_park, pessoa_thread.time_exit_park, args->client_socket); // Send time on the park
         send_message(0, 0, 0, pessoa_thread.id, args->client_socket); // Message the person used the park
     } else {
-        printf("Park is closed \n");
+        sprintf(str, "Pessoa %d não obteve entrada no parque antes de fechar", pessoa_thread.id);
+        logMessage(args->logfile, ROUTINE, str);
+        str[75] = '\0'; // Resets the str for later use
+
         send_message(0, 0, 1, pessoa_thread.id, args->client_socket); // Message the person couldnt use the park
         send_message(2, 0, 3, pessoa_thread.id, args->client_socket);
         sem_post(&entry_into_park);

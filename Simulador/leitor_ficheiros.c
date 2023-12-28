@@ -5,9 +5,17 @@
 #include "leitor_ficheiros.h"
 
 /*
-    This function is responsible for reading the configuration file that contains the essential
-    information when running the program. Its use, and how can be easily changed can be found on the
-    read me file.
+    Function: readConfigFile
+    Purpose:  Reads the configuration file and populates the Simulador_config structure with the specified parameters.
+    Parameters:
+      - filename: The name of the configuration file to read.
+      - Config: Pointer to the Simulador_config structure where the configuration parameters will be stored.
+    Returns:
+      - 0 on success.
+      - 1 if there is an error opening the file.
+
+    How it works: Opens the file, and checks for every line if it matches one of the keys that is writen on
+    the if block, it so passes the value in front of the key to the desired variable in the config structure    
 */
 int readConfigFile(const char *filename, struct Simulador_config *Config)
 {
@@ -44,6 +52,10 @@ int readConfigFile(const char *filename, struct Simulador_config *Config)
             {
                 Config->probability_being_child = atof(value);
             }
+            else if (strcmp(key, "Probability_Being_Writer") == 0)
+            {
+                Config->probability_being_writer = atof(value);
+            }
             else if (strcmp(key, "Simulation_duration_(seconds)") == 0)
             {
                 Config->simulation_duration = atoi(value);
@@ -67,6 +79,33 @@ int readConfigFile(const char *filename, struct Simulador_config *Config)
             else if (strcmp(key, "Threads_to_create") == 0)
             {
             	Config->threads_to_create = atoi(value);
+            }
+            else if (strcmp(key, "Timeout_waterpolo_(Seconds)") == 0)
+            {
+            	Config->timeout_waterpolo = atoi(value);
+            }
+            else if (strcmp(key, "Wait_time_FamilyWaterslide_(Microseconds)") == 0)
+            {
+            	Config->wait_time_familyWaterslide = atoi(value);
+            }
+            else if (strcmp(key, "Wait_time_Toboggan_(Microseconds)") == 0)
+            {
+            	Config->wait_time_toboggan = atoi(value);
+            }
+            else if (strcmp(key, "Wait_time_snack_bar_(Microseconds)") == 0)
+            {
+            	Config->wait_time_snackbar = atoi(value);
+            }
+            else if (strcmp(key, "Wait_time_waterpolo_(Microseconds)") == 0)
+            {
+            	Config->Wait_time_waterpolo = atoi(value);
+            }
+            else if (strcmp(key, "Wait_time_readsignature_(Microseconds)") == 0)
+            {
+            	Config->wait_time_read_signature = atoi(value);
+            }else if (strcmp(key, "Wait_time_writesignature_(Microseconds)") == 0)
+            {
+            	Config->wait_time_sign_signature = atoi(value);
             }
             else
             {

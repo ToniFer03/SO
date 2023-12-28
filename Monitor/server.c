@@ -16,12 +16,12 @@ socklen_t client_addr_len;                         // Store the size of the clie
 struct statistics_time_simulator stats_time = {0}; // Struct that will hold info from the simulator
 struct statistics_number_people stats_num = {0};   // Struct that will hold info from the simulator
 struct statistics_live live_stats = {0};           // Struct that will hold statistics of live park
-struct calculated_statistics final_stats = {0};         // Struct that will hold the final stats to present to the user
+struct calculated_statistics final_stats = {0};    // Struct that will hold the final stats to present to the user
 
 
 /*
-    This function is responsible for creating a socket server to be able to communicate with
-    other processes
+   Function: server_socket_create
+   Purpose:  Creates a server socket and sets it up for listening on a specified port.
 */
 void server_socket_create()
 {
@@ -56,19 +56,37 @@ void server_socket_create()
 
 
 /*
-    Funtion responsible for calculating the average time, and converting it to the simulated time
-    in seconds.
+    Function: calculate_avg_time
+    Purpose:  Calculates the average time, converts it to simulated time, and returns the result.
+    Parameters:
+      - time_seconds: Time in seconds.
+      - time_microseconds: Time in microseconds.
+      - total_number_people: Total number of people.
+    Returns: Average time in simulated time (seconds).
+
+    How it works: Checks if any people used the atraction if not returns 0. If someone used the
+    atraction, converst the microseconds into seconds and then the total amount of time people kept
+    waiting for the number of people that used the atraction. 
+    Finally multiplies by the timescale of how much each second in real life is worth to get the 
+    wait time on the simulated world
 */
 double calculate_avg_time(int time_seconds, int time_microseconds, int total_number_people){
-    double total_time = time_seconds + time_microseconds / 1.0e6;
-    return ((total_time/total_number_people) * stats_time.timeScale);
+    if(total_number_people > 0){
+        double total_time = time_seconds + time_microseconds / 1.0e6;
+        return ((total_time/total_number_people) * stats_time.timeScale);
+    }
+    
+    return 0;
 }
 
 
+
 /*
-    Function that receives a value of seconds and turns it into the personalized time
-    struct to present to the user, it receives the total time in seconds and the adress
-    of the struct to put the info into
+    Function: convert_personalized_time
+    Purpose:  Converts a given time in seconds to a structure representing hours, minutes, and seconds.
+    Parameters:
+        - time: The time in seconds to be converted.
+        - pers_time: Pointer to a struct personalized_time where the result will be stored.
 */
 void convert_personalized_time(double time, struct personalized_time * pers_time)
 {
@@ -84,75 +102,90 @@ void convert_personalized_time(double time, struct personalized_time * pers_time
 }
 
 
+
 /*
-    Function that will calculate all the averages when the simulator ends
+    Function: calculate_final_statistics
+    Purpose:  Calculates various average times based on accumulated statistics when the simulator ends.
+
+    How it works: Create a temporary variable that will hold the return of the calculate_avg_time()
+    function, and pass that value to the convert_personallized_time() where it will convert to that
+    time format and put it on the final_stats structure
 */
 void calculate_final_statistics()
 {
     double temp_seconds = 0; // Temp variable
 
     // Calculate average time online to use the park (doesnt count the ones that couldnt use the park)
-    if(stats_num.used_park_today > 0){
-        temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_park_seconds, stats_time.sum_time_on_line_park_microseconds, stats_num.used_park_today);
-        convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_park);
-    }
+    temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_park_seconds, 
+    stats_time.sum_time_on_line_park_microseconds, 
+    stats_num.used_park_today);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_park);
+    
 
     // Calculate average time inside the park
-    if(stats_num.used_park_today > 0){
-        temp_seconds = calculate_avg_time(stats_time.sum_time_inside_park_seconds, stats_time.sum_time_inside_park_microseconds, stats_num.used_park_today);
-        convert_personalized_time(temp_seconds, &final_stats.avg_time_inside_park);
-    }    
+    temp_seconds = calculate_avg_time(stats_time.sum_time_inside_park_seconds, 
+    stats_time.sum_time_inside_park_microseconds, 
+    stats_num.used_park_today);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_inside_park);
 
     // Calculate average time waiting fot the toboggan
-    if(stats_num.used_Toboggan > 0){
-        temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_toboggan_seconds, stats_time.sum_time_on_line_toboggan_microseconds, stats_num.used_Toboggan);
-        convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_toboggan);
-    }    
+    temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_toboggan_seconds, 
+    stats_time.sum_time_on_line_toboggan_microseconds, 
+    stats_num.used_Toboggan);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_toboggan);
 
     // Calculate the average time waiting for the snackbar
-    if(stats_num.used_Snack_bar > 0){
-        temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_snack_seconds, stats_time.sum_time_on_line_snack_microseconds, stats_num.used_Snack_bar);
-        convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_snack);
-    }    
+    temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_snack_seconds, 
+    stats_time.sum_time_on_line_snack_microseconds, 
+    stats_num.used_Snack_bar);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_snack);
     
 
     // Calculate the average time children waited for the family waterslide
-    if(stats_num.children_used_Familywaterslide > 0){
-        temp_seconds = calculate_avg_time(stats_time.sum_time_child_famwaterslide_seconds, stats_time.sum_time_child_famwaterslide_microseconds, stats_num.children_used_Familywaterslide);
-        convert_personalized_time(temp_seconds, &final_stats.avg_time_child_famWaterslide);
-    }    
+    temp_seconds = calculate_avg_time(stats_time.sum_time_child_famwaterslide_seconds, 
+    stats_time.sum_time_child_famwaterslide_microseconds, 
+    stats_num.children_used_Familywaterslide);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_child_famWaterslide);
     
 
     // Calculate the average time elders waited for the family waterslide
-    if(stats_num.elders_used_Familywaterslide > 0){
-        temp_seconds = calculate_avg_time(stats_time.sum_time_elder_famwaterslide_seconds, stats_time.sum_time_elder_famwaterslide_microseconds, stats_num.elders_used_Familywaterslide);
-        convert_personalized_time(temp_seconds, &final_stats.avg_time_elder_famWaterslide);
-    }    
+    temp_seconds = calculate_avg_time(stats_time.sum_time_elder_famwaterslide_seconds, 
+    stats_time.sum_time_elder_famwaterslide_microseconds, 
+    stats_num.elders_used_Familywaterslide);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_elder_famWaterslide);
 
     // Calculate the average time adults waited for the family waterslide
-    if(stats_num.adults_used_Familywaterslide > 0){
-        temp_seconds = calculate_avg_time(stats_time.sum_time_adult_famwaterslide_seconds, stats_time.sum_time_adult_famwaterslide_microseconds, stats_num.adults_used_Familywaterslide);
-        convert_personalized_time(temp_seconds, &final_stats.avg_time_adult_famWaterslide);
-    }    
+    temp_seconds = calculate_avg_time(stats_time.sum_time_adult_famwaterslide_seconds, 
+    stats_time.sum_time_adult_famwaterslide_microseconds, 
+    stats_num.adults_used_Familywaterslide);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_adult_famWaterslide);
 
     // Calculate the average time waiting for the waterpolo
-    if(stats_num.played_waterpolo > 0){
-        temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_waterpolo_seconds, stats_time.sum_time_on_line_waterpolo_microseconds, stats_num.played_waterpolo);
-        convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_waterpolo);
-    }    
+    temp_seconds = calculate_avg_time(stats_time.sum_time_on_line_waterpolo_seconds, 
+    stats_time.sum_time_on_line_waterpolo_microseconds, 
+    stats_num.played_waterpolo);
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_on_line_waterpolo);
 
-    if((stats_num.signed_book + stats_num.read_book) > 0)
-    {
-        temp_seconds = calculate_avg_time(stats_time.sum_time_to_signature_book_seconds, stats_time.sum_time_to_signature_book_microseconds, (stats_num.signed_book + stats_num.read_book));
-        convert_personalized_time(temp_seconds, &final_stats.avg_time_for_signature_book);
-    }
+    temp_seconds = calculate_avg_time(stats_time.sum_time_to_signature_book_seconds, 
+    stats_time.sum_time_to_signature_book_microseconds, 
+    (stats_num.signed_book + stats_num.read_book)); //Sum of the people who read and wrote
+    convert_personalized_time(temp_seconds, &final_stats.avg_time_for_signature_book);
+    
     
 }
 
 
+
 /*
-    Decode message will call this function too handle info related to the number of people who did something
-    Code[0] == 0
+    Function: decode_number_people
+    Purpose:  Handles information related to the number of people who did something based on the received code
+    Parameters:
+      - code: An integer array containing the code information.
+
+    How it works: This function is called when code[0] is 0, then uses code[1] for a switch
+    where each number representas a different atraction, or the park itself.
+    Code[2] is used to represent something the person did while on that atraciton;
+    Code[3] is used for the person ID
 */
 void decode_number_people(int code[4])
 {
@@ -241,9 +274,17 @@ void decode_number_people(int code[4])
 }
 
 
+
 /*
-    Decode message will call this funtion to handle info related to the time statistics of people
-    Code[0] == 1
+    Function: decode_time_people
+    Purpose:  Handles information related to the time people spent doing something based on the receive code
+    Parameters:
+      - code: An integer array containing the code information.
+
+    How it works: This function is called when code[0] is 1, then uses code[1] for a switch
+    where each number representas a different lines, atractions or priority lines;
+    Code[2] is used to represent if the information is in seconds or microseconds;
+    Code[3] is used for the value of the time that is being passed;
 */
 void decode_time_people(int code[4])
 {
@@ -354,9 +395,17 @@ void decode_time_people(int code[4])
 }
 
 
+
 /*
-    Decode message will call this funtion to handle live statistics of the park and print what info it receives
-    Code[0] == 2
+    Function: decode_live_stats
+    Purpose:  Handles information that is to be presented live to the user about the simulator
+    Parameters:
+      - code: An integer array containing the code information.
+
+    How it works: This function is called when code[0] is 2, then uses code[1] for a switch
+    where each number representas a different atraction, or the park itself.
+    Code[2] is used to represent if the person entered an atracion, exited, entered the line, etc;
+    Code[3] is used for the person ID
 */
 void decode_live_stats(int code[4])
 {
@@ -444,9 +493,95 @@ void decode_live_stats(int code[4])
 }
 
 
+
 /*
-    This function is responsible for decoding the messages that it receives, receives an argument of type int
-    and checks the code in a switch to check what kind of action need to be taken.
+    Function: print_live_stats
+    Purpose:  Prints live statistics of the park.
+*/
+void print_live_stats()
+{
+    // Prints the live statistics of park
+    printf("                                                                            \n");
+    printf("Live numbers of the park:                                                   \n");
+    printf("In line to enter the park:..........%d                                      \n", live_stats.inline_park);
+    printf("Inside the park:....................%d                                      \n", live_stats.inside_park);
+    printf("In the Family waterslide:...........%d                                      \n", live_stats.family_waterslide);
+    printf("In Toboggan:........................%d                                      \n", live_stats.toboggan);
+    printf("In the Snackbar:....................%d                                      \n", live_stats.Snackbar);
+    printf("In the Waterpolo:...................%d                                      \n", live_stats.waterpolo);
+    printf("In the Signature book room:.........%d                                      \n", live_stats.signature_book);
+    printf("\033[9A\033[0G\033[?25l"); // This print puts the cursor 8 lines up and on the first caracter of the line
+
+    // Flush the output to ensure it's displayed immediately
+    fflush(stdout);
+}
+
+
+
+/*
+    Function: print_final_stats()
+    Purpose:  Prints lthe final statistics of the park to show the user
+*/
+void print_final_stats()
+{
+    printf("Measured in number of people                                                 \n");
+    printf("-----------------------------------------------------------------------------\n");
+    printf("Park: (Entered | Didn't Enter):...............................(%d | %d)      \n", 
+    stats_num.used_park_today, stats_num.park_closed_before_entry);
+    printf("Used the Family Waterslide: (Children | Adults | Elders):.....(%d | %d | %d) \n", 
+    stats_num.children_used_Familywaterslide, stats_num.adults_used_Familywaterslide, stats_num.elders_used_Familywaterslide);
+    printf("Toboggan (Used | Quit on Line):...............................(%d | %d)      \n",
+    stats_num.used_Toboggan, stats_num.quit_Toboggan);
+    printf("Snackbar (Used | Quit on Line):...............................(%d | %d)      \n",
+    stats_num.used_Snack_bar, stats_num.quit_Snack_bar);
+    printf("Waterpolo (Played | Didnt Play):..............................(%d | %d)      \n",
+    stats_num.played_waterpolo, stats_num.not_played_waterpolo);
+    printf("Signature book (Write | Read):................................(%d | %d)      \n",
+    stats_num.signed_book, stats_num.read_book);
+    printf("\n");
+
+    // Print Statistics related to time
+    printf("Wait times on the park:                                                        \n");
+    printf("-------------------------------------------------------------------------------\n");
+    printf("Average time on line for the park:............................%d(h) %d(m) %d(s)\n",
+    final_stats.avg_time_on_line_park.hours, final_stats.avg_time_on_line_park.minutes, 
+    final_stats.avg_time_on_line_park.seconds);
+    printf("Average time inside the park:.................................%d(h) %d(m) %d(s)\n",
+    final_stats.avg_time_inside_park.hours, final_stats.avg_time_inside_park.minutes, 
+    final_stats.avg_time_inside_park.seconds);
+    printf("Average time waiting for the toboggan:........................%d(h) %d(m) %d(s)\n",
+    final_stats.avg_time_on_line_toboggan.hours, final_stats.avg_time_on_line_toboggan.minutes, 
+    final_stats.avg_time_on_line_toboggan.seconds);
+    printf("Average time waiting for the Snackbar:........................%d(h) %d(m) %d(s)\n",
+    final_stats.avg_time_on_line_snack.hours, final_stats.avg_time_on_line_snack.minutes, 
+    final_stats.avg_time_on_line_snack.seconds);
+    printf("Average time children waited for the family waterslide:.......%d(h) %d(m) %d(s)\n", 
+    final_stats.avg_time_child_famWaterslide.hours, final_stats.avg_time_child_famWaterslide.minutes, 
+    final_stats.avg_time_child_famWaterslide.seconds);
+    printf("Average time elders waited for the family waterslide:.........%d(h) %d(m) %d(s)\n", 
+    final_stats.avg_time_elder_famWaterslide.hours, final_stats.avg_time_elder_famWaterslide.minutes, 
+    final_stats.avg_time_elder_famWaterslide.seconds);
+    printf("Average time adults waited for the family waterslide:.........%d(h) %d(m) %d(s)\n", 
+    final_stats.avg_time_adult_famWaterslide.hours, 
+    final_stats.avg_time_adult_famWaterslide.minutes, final_stats.avg_time_adult_famWaterslide.seconds);
+    printf("Average time waiting to play waterpolo:.......................%d(h) %d(m) %d(s)\n", 
+    final_stats.avg_time_on_line_waterpolo.hours, 
+    final_stats.avg_time_on_line_waterpolo.minutes, final_stats.avg_time_on_line_waterpolo.seconds);
+    printf("Average time waiting for the signature book:..................%d(h) %d(m) %d(s)\n", 
+    final_stats.avg_time_for_signature_book.hours, 
+    final_stats.avg_time_for_signature_book.minutes, final_stats.avg_time_for_signature_book.seconds);
+
+    // Flush the output to ensure it's displayed immediately
+    fflush(stdout);   
+}
+
+
+
+/*
+    Function: decode_message
+    Purpose:  Decodes received messages based on the provided code and performs corresponding actions.
+    Parameters:
+        - code: An array of integers representing the message code and additional information.
 */
 void decode_message(int code[4])
 {
@@ -477,80 +612,23 @@ void decode_message(int code[4])
 
         // Calculate final statistics
         calculate_final_statistics();
-
-        printf("Measured in number of people                                                 \n");
-        printf("-----------------------------------------------------------------------------\n");
-        printf("Park: (Entered | Didn't Enter):...............................(%d | %d)      \n", 
-        stats_num.used_park_today, stats_num.park_closed_before_entry);
-        printf("Used the Family Waterslide: (Children | Adults | Elders):.....(%d | %d | %d) \n", 
-        stats_num.children_used_Familywaterslide, stats_num.adults_used_Familywaterslide, stats_num.elders_used_Familywaterslide);
-        printf("Toboggan (Used | Quit on Line):...............................(%d | %d)      \n",
-        stats_num.used_Toboggan, stats_num.quit_Toboggan);
-        printf("Snackbar (Used | Quit on Line):...............................(%d | %d)      \n",
-        stats_num.used_Snack_bar, stats_num.quit_Snack_bar);
-        printf("Waterpolo (Played | Didnt Play):..............................(%d | %d)      \n",
-        stats_num.played_waterpolo, stats_num.not_played_waterpolo);
-        printf("Signature book (Write | Read):................................(%d | %d)      \n",
-        stats_num.signed_book, stats_num.read_book);
-        printf("\n");
-
-        // Print Statistics related to time
-        printf("Wait times on the park:                                                        \n");
-        printf("-------------------------------------------------------------------------------\n");
-        printf("Average time on line for the park:............................%d(h) %d(m) %d(s)\n",
-        final_stats.avg_time_on_line_park.hours, final_stats.avg_time_on_line_park.minutes, 
-        final_stats.avg_time_on_line_park.seconds);
-        printf("Average time inside the park:.................................%d(h) %d(m) %d(s)\n",
-        final_stats.avg_time_inside_park.hours, final_stats.avg_time_inside_park.minutes, 
-        final_stats.avg_time_inside_park.seconds);
-        printf("Average time waiting for the toboggan:........................%d(h) %d(m) %d(s)\n",
-        final_stats.avg_time_on_line_toboggan.hours, final_stats.avg_time_on_line_toboggan.minutes, 
-        final_stats.avg_time_on_line_toboggan.seconds);
-        printf("Average time waiting for the Snackbar:........................%d(h) %d(m) %d(s)\n",
-        final_stats.avg_time_on_line_snack.hours, final_stats.avg_time_on_line_snack.minutes, 
-        final_stats.avg_time_on_line_snack.seconds);
-        printf("Average time children waited for the family waterslide:.......%d(h) %d(m) %d(s)\n", 
-        final_stats.avg_time_child_famWaterslide.hours, final_stats.avg_time_child_famWaterslide.minutes, 
-        final_stats.avg_time_child_famWaterslide.seconds);
-        printf("Average time elders waited for the family waterslide:.........%d(h) %d(m) %d(s)\n", 
-        final_stats.avg_time_elder_famWaterslide.hours, final_stats.avg_time_elder_famWaterslide.minutes, 
-        final_stats.avg_time_elder_famWaterslide.seconds);
-        printf("Average time adults waited for the family waterslide:.........%d(h) %d(m) %d(s)\n", 
-        final_stats.avg_time_adult_famWaterslide.hours, 
-        final_stats.avg_time_adult_famWaterslide.minutes, final_stats.avg_time_adult_famWaterslide.seconds);
-        printf("Average time waiting to play waterpolo:.......................%d(h) %d(m) %d(s)\n", 
-        final_stats.avg_time_on_line_waterpolo.hours, 
-        final_stats.avg_time_on_line_waterpolo.minutes, final_stats.avg_time_on_line_waterpolo.seconds);
-        printf("Average time waiting for the signature book:..................%d(h) %d(m) %d(s)\n", 
-        final_stats.avg_time_for_signature_book.hours, 
-        final_stats.avg_time_for_signature_book.minutes, final_stats.avg_time_for_signature_book.seconds);
-
-        // Flush the output to ensure it's displayed immediately
-        fflush(stdout);
+        print_final_stats();
     } 
     else 
     {
-        // Prints the live statistics of park
-        printf("                                                                            \n");
-        printf("Live numbers of the park:                                                   \n");
-        printf("In line to enter the park:..........%d                                      \n", live_stats.inline_park);
-        printf("Inside the park:....................%d                                      \n", live_stats.inside_park);
-        printf("In the Family waterslide:...........%d                                      \n", live_stats.family_waterslide);
-        printf("In Toboggan:........................%d                                      \n", live_stats.toboggan);
-        printf("In the Snackbar:....................%d                                      \n", live_stats.Snackbar);
-        printf("In the Waterpolo:...................%d                                      \n", live_stats.waterpolo);
-        printf("In the Signature book room:.........%d                                      \n", live_stats.signature_book);
-        printf("\033[9A\033[0G\033[?25l"); // This print puts the cursor 8 lines up and on the first caracter of the line
-
-        // Flush the output to ensure it's displayed immediately
-        fflush(stdout);
+        print_live_stats();
     }
 }
 
 
+
 /*
-    Function responsible for receiving messages for the other process, and check if
-    the other process disconnected
+    Function: check_client_disconnect
+    Purpose:  Checks if the client has disconnected or if an error occurred by attempting to receive a message.
+              If the client has disconnected or an error occurred, it prints a message and exits the loop.
+    Returns:
+        - 0 if the client has disconnected or an error occurred.
+        - 1 if the message was successfully received and decoded.
 */
 int check_client_disconnect()
 {
@@ -573,8 +651,13 @@ int check_client_disconnect()
 }
 
 
+
 /*
-    This function is responsible for connecting to a client when receiving a request to connect
+    Function: connect_client
+    Purpose:  Accepts a connection from a client.
+    Returns:
+        - 1 if the connection is successful.
+        - (-1) if there is a problem with the connection.
 */
 int connect_client()
 {
