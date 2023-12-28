@@ -8,4 +8,4 @@ Time_being_simulated_(Hours) = 8
 Max_People_Park = 200
 Max_People_Toboggan = 50
 Max_People_Snack_Bar = 50
-Threads_to_create = 300
+Threads_to_create = 1000

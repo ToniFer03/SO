@@ -19,29 +19,29 @@ int last_signature = 0; // Critical section
 int numberReaders = 0;
 
 
-// semaphore
+// Semaphores declaration
 sem_t entry_into_park;    // entry into the park
 sem_t sem_priority_elder; // semaphore for elder priority
 sem_t sem_priority_adult; // semaphore for adult priority
 sem_t sem_priority_child; // semaphore for child priority
-sem_t sem_toboggan;
-sem_t sem_snack_bar;
-sem_t snack_empty;
-sem_t snack_full;
-sem_t sem_water_polo;
-sem_t writers;
+sem_t sem_toboggan;       // Semaphore for the line at the toboggan
+sem_t sem_snack_bar;      // Semaphore for the producer-consumer problem
+sem_t snack_empty;        // Semaphore for the producer-consumer problem
+sem_t snack_full;         // Semaphore for the producer-consumer problem
+sem_t sem_water_polo;     // Semaphore for the number of people on the waterpolo team
+sem_t writers;            // Semaphore for the reader-writer problem
 
 // mutex
-pthread_mutex_t access_familyWaterSlide;
-pthread_mutex_t access_toboggan;
-pthread_mutex_t snack;
-pthread_mutex_t lock;
-pthread_mutex_t water_polo_lock;
-pthread_mutex_t exclusion_reader_writers;
+pthread_mutex_t access_familyWaterSlide;    // Mutex for the access to the Family Waterslide
+pthread_mutex_t access_toboggan;            // Mutex for the access to the Toboggan
+pthread_mutex_t snack;                      // Mutex for the producer-consumer problem
+pthread_mutex_t lock;                       // Mutex for mutual exclusion when giving id to thread
+pthread_mutex_t water_polo_lock;            // Mutex for updating the number of people on queue for waterpolo
+pthread_mutex_t exclusion_reader_writers;   // Mutex for mutual exclusion in the reader-writer problem
 
-// Global variable
-int nu = 1;
-int players_water_polo = 0;
+// Global variables 
+int nu = 1;                     // For the thread id    
+int players_water_polo = 0;     // Number of people on queue to play waterpolo
 
 
 int main(int argc, char *argv[])
@@ -70,8 +70,8 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    int client_socket = connect_server(); // get the client socket
-    calculateTimeScale(&config, client_socket);
+    int client_socket = connect_server();       // get the client socket
+    calculateTimeScale(&config, client_socket); // Calculate how much each second represent in simulated time
 
     // initialize the semaphore
     sem_init(&entry_into_park, 0, config.max_people_park);
@@ -184,9 +184,15 @@ int main(int argc, char *argv[])
 }
 
 
+
 /*
-    Function responsible getting the current time and date, for the log file name
-    and every entry of it. So that we can know when everything happened
+   Function: getCurrentTimestamp
+   Purpose:  Returns a string representation of the current timestamp.
+             The format is "YYYYMMDDHHMMSS".
+   Returns:  A pointer to a static char array containing the timestamp.
+   
+   How it works: Gets the current rawtime, converts it into the timeinfo structure,
+   and then formats that information into a string and puts it on the timestamp[20] 
 */
 const char *getCurrentTimestamp()
 {
@@ -203,9 +209,13 @@ const char *getCurrentTimestamp()
 }
 
 
+
 /*
-    Function responsible for generating a random Number between 0 and a specific number
-    that we send to the funcion
+   Function: getRandomNumber
+   Purpose:  Generates a random number within the specified limit.
+   Parameters:
+      - limit: The upper limit (exclusive) for the generated random number.
+   Returns:  A random number in the range [0, limit).
 */
 int getRandomNumber(int limit)
 {
@@ -213,9 +223,14 @@ int getRandomNumber(int limit)
 }
 
 
+
 /*
-    This function calculates how much each second represents in real time and sends it to the monitor.
-    To note it uses, integer division
+   Function: calculateTimeScale
+   Purpose:  Calculates a time scale based on the simulation configuration and sends a message
+   to the monitor with that information, for the calculations it needs
+   Parameters:
+      - config: Pointer to the Simulador_config structure containing simulation parameters.
+      - client_socket: The socket for communication with the client.
 */
 void calculateTimeScale(struct Simulador_config * config, int client_socket){
     int temp_real_time = config->time_being_simulated * 3600; //turns the hours into seconds
@@ -223,12 +238,14 @@ void calculateTimeScale(struct Simulador_config * config, int client_socket){
 }
 
 
+
 /*
-    This function is used to determine the age of a certain person based on the probabilities
-    that where writen on the config file. It receives as pointers the args, that contain the
-    simulator config that was read from the file and a Struct of type Person_info where it
-    will set the faixa_etaria on it (an enum type of Child = 0, Adult = 1, and Elder = 2)
-    at random based on the probabilities given
+   Function: determineAgeGroup
+   Purpose:  Assigns an age group to a person based on random probability. The probabily, is 
+   already defined on the initial config file.
+   Parameters:
+      - args: Pointer to the ThreadArgs structure containing thread-specific arguments.
+      - pessoa_thread: Pointer to the Person_info structure representing the person.
 */
 void determineAgeGroup(struct ThreadArgs *args, struct Person_info *pessoa_thread)
 {
@@ -249,8 +266,21 @@ void determineAgeGroup(struct ThreadArgs *args, struct Person_info *pessoa_threa
 };
 
 
+
 /*
-    Function that will send the info on how much time each person spent doing a certain activity
+    Function: send_time_monitor
+    Purpose:  Sends information about the time spent on a certain activity to a client, sends it in 
+    real simulation time.
+    Parameters:
+      - code0: The first code parameter for the message.
+      - code1: The second code parameter for the message.
+      - starttime: The start time of the activity.
+      - endtime: The end time of the activity.
+      - client_socket: The socket for communication with the client.
+    
+    How it works: Creates a var diff off the timeval struct to hold the information of the time spent
+    on the activity, after that sends the first message with code[2] = 0 that represents seconds spent,
+    and another message code[2] = 1, that represents the microseconds of the timeval struct.
 */
 void send_time_monitor(int code0, int code1, struct timeval starttime, struct timeval endtime, int client_socket)
 {
@@ -262,9 +292,24 @@ void send_time_monitor(int code0, int code1, struct timeval starttime, struct ti
 }
 
 
+
 /*
-    This funtion handles the logic of the water park, it will give priority to elderly, then children
-    and finally the adults to enter the water slide
+    Function: familyWaterSlide
+    Purpose:  Simulate the synchronization problem of priority list for accessing a resource 
+    Parameters:
+      - pessoa_thread: Information about the person including age group, ID, and timing.
+      - clientSocket: The socket for communication with the client.
+
+    Priority of access: Child > Elder > Adult
+
+    How it works: First, it gets the time of entry intro the park. After doing so, goes by an if
+    block where it differentiates by age group, the higher the priority, the higher they are on 
+    the block.
+    After passing the if block, if the semaphores are opened, the call on a lock to try and enter
+    the critical section where, if successfully, they get to acess the critical section.
+    On this critical section, they get the time they manage to enter the critical section and send
+    a messsage to the monitor, based on their age group with the time they waited in line.
+    After exiting the critical section they post the semaphores on the priority order. 
 */
 void familyWaterSlide(struct Person_info pessoa_thread, int clientSocket)
 {
@@ -319,6 +364,24 @@ void familyWaterSlide(struct Person_info pessoa_thread, int clientSocket)
 }
 
 
+
+/*
+    Function: toboggan
+    Purpose:  Represents the mutual exclusion problem, with a semaphore for a simple line
+    Parameters:
+      - pessoa_thread: Information about the person including ID, patience, and timing.
+      - clientSocket: The socket for communication with the client.
+    
+    How it works: First it has a boolean to check if the person waited on line, its porpouse if for the case 
+    the person didnt have to wait for the toboggan send to the monitor a wait time of 0.
+    It does a try_wait for the sem_toboggan responsible for the line of the toboggan, in case it is full the 
+    person is forced to exit the atraction.
+    In case the line is not full, it does a try_lock to check if the toboggan is currently in use, in case it is,
+    makes a calculation to see if the person is to give up using the atraction based on the simulated patience of 
+    the person.
+    If the person decidedes to stay, he will wait until the toboggan in free to use, sendind the statistics of use 
+    and wait time on accessing the critical section
+*/
 void toboggan(struct Person_info pessoa_thread, int clientSocket)
 {
     bool waited_on_line = false;
@@ -374,6 +437,24 @@ void toboggan(struct Person_info pessoa_thread, int clientSocket)
 }
 
 
+
+/*
+    Function: snack_bar
+    Purpose:  Simulates the producer consumer problem
+    Parameters:
+      - pessoa_thread: Information about the person including ID, patience, and timing.
+      - clientSocket: The socket for communication with the client.
+
+    How it works: It first checks the sem_snackbar to check if there are people on the queue,
+    in case they are performs the calculation based on the persons patience to give up. If it 
+    doesn't give up, adquite the semaphore.
+    Waits for the producer to post the drink is ready, and tries the lock for the critical section.
+    Takes the drink out of the critical section, and increases the global variable out, for the
+    next person to access. When it reaches the end of the buffer, goes back to the begginig of
+    the buffer.
+    
+    
+*/
 void snack_bar(struct Person_info pessoa_thread, int clientSocket)
 {
     /*
@@ -389,6 +470,7 @@ void snack_bar(struct Person_info pessoa_thread, int clientSocket)
             send_message(0, 3, 1, pessoa_thread.id, clientSocket); // Message the person gave up
             return;
         }
+        sem_wait(&sem_snack_bar);
     }
 
     gettimeofday(&pessoa_thread.time_start_waiting_snack, NULL);
@@ -412,6 +494,20 @@ void snack_bar(struct Person_info pessoa_thread, int clientSocket)
 }
 
 
+
+/*
+    Function: water_polo
+    Purpose:  Simulates the simple line for accessing a resource
+    Parameters:
+      - pessoa_thread: Information about the person including ID and timing.
+      - clientSocket: The socket for communication with the client.
+
+    How it works: First signals the semaphore of the line, and gets the time it entered the line.
+    Uses a mutual exclusion mutex to increase the global variable of players waiting to play waterpolo.
+    Waits on the loop for up to 5 seconds for a team of 14 to play, in case its unsucessfull, decreases 
+    the variable and exits the queue. 
+    If sucessfull, plays waterpolo ands sends statistics to the monitor.
+*/
 void water_polo(struct Person_info pessoa_thread, int clientSocket)
 {
     // Signal that a player has entered
@@ -456,6 +552,17 @@ void water_polo(struct Person_info pessoa_thread, int clientSocket)
 }
 
 
+
+/*
+    Function: write_signature
+    Purpose:  Code to be executed by the writer threads
+    Parameters:
+      - pessoa_thread: Information about the person including ID.
+      - clientSocket: The socket for communication with the client.
+    
+    How it works: Waits for the semaphore saying that it can write, after that 
+    assigns its id to the global variable last signature, and posts the semaphore
+*/
 void write_signature(struct Person_info pessoa_thread, int clientSocket)
 {
     sem_wait(&writers);
@@ -466,6 +573,20 @@ void write_signature(struct Person_info pessoa_thread, int clientSocket)
 }
 
 
+
+/*
+    Function: read_signature
+    Purpose:  Code to be executed by the reader threads
+    Parameters:
+      - pessoa_thread: Information about the person including ID.
+      - clientSocket: The socket for communication with the client.
+    
+    How it works: Tries the mutual exclusion lock to update the global
+    variable number of readers, if its the first to do so, locks the
+    semaphore of the writers, so no writer can write while some threads 
+    are reading. If a thread puts the number of readers at 0, the semaphore 
+    for the writers is unlocked and no function can read until a writers posts.
+*/
 void read_signature(struct Person_info pessoa_thread, int clientSocket)
 {
     pthread_mutex_lock(&exclusion_reader_writers);
@@ -488,6 +609,14 @@ void read_signature(struct Person_info pessoa_thread, int clientSocket)
 }
 
 
+
+/*
+    Function: signature_book
+    Purpose:  Assigns a thread a reader or writer status based on chance
+    Parameters:
+      - pessoa_thread: Information about the person including ID and timing.
+      - clientSocket: The socket for communication with the client.
+*/
 void signature_book(struct Person_info pessoa_thread, int clientSocket)
 {
     double randomValue = ((double)rand() / RAND_MAX) * 100.0;
@@ -509,7 +638,26 @@ void signature_book(struct Person_info pessoa_thread, int clientSocket)
 }
 
 
-// function to manage the entry intro the atractions
+
+
+/*
+    Function: manageAtractions
+    Purpose:  Handle the persons entry into every atraction, and signal it to the monitor
+    Parameters:
+      - pessoa_thread: Information about the person including ID and visited attractions.
+      - clientSocket: The socket for communication with the client.
+    
+    How it works: Has two variables, one that holds the value true to continue the loop
+    until every atraction has been visited, and another one that will hold the random
+    value for the next atraction.
+    That value is put on a switch for the person to enter the next atraction and signal
+    the monitor.
+    After exiting the atraction, puts the visited_atraction array on the index with
+    the number representing the atraction as true. 
+    In the end checks if all the visited atractions are true, if so the person can exit the
+    park
+    
+*/
 void manageAtractions(struct Person_info pessoa_thread, int clientSocket)
 {
     bool stay_on_park = true;
@@ -561,6 +709,7 @@ void manageAtractions(struct Person_info pessoa_thread, int clientSocket)
             break;
         }
 
+
         // Code that checks if the person has visited every atraction, if so exits the park
         if(!pessoa_thread.visited_Atractions[0]){
             continue;
@@ -588,6 +737,11 @@ void manageAtractions(struct Person_info pessoa_thread, int clientSocket)
 }
 
 
+
+/*
+   Function: barista_thread
+   Purpose:  Special thread to simulate the producer in the consumer producer problem
+*/
 void *barista_thread()
 {
     int drink = 1;
@@ -607,9 +761,10 @@ void *barista_thread()
 
 
 /*
-    The code in here represents everything that will be executed by the threads. It receives
-    an argument of the struct type ThreadArg, that contains the simulator config as well as
-    the name of the log files to be writen and the client socket to be able to send messages
+   Function: person_thread
+   Purpose:  Simulates the behavior of an individual thread representing a person in the amusement park.
+   Parameters:
+      - arg: A pointer to a ThreadArgs structure containing configuration and communication parameters.
 */
 void *person_thread(void *arg)
 {

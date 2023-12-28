@@ -478,19 +478,19 @@ void decode_message(int code[4])
         // Calculate final statistics
         calculate_final_statistics();
 
-        printf("Measured in number of people                                                  \n");
-        printf("------------------------------------------------------------------------------\n");
-        printf("Park: (Entered | Didn't Enter):...............................(%d | %d)       \n", 
+        printf("Measured in number of people                                                 \n");
+        printf("-----------------------------------------------------------------------------\n");
+        printf("Park: (Entered | Didn't Enter):...............................(%d | %d)      \n", 
         stats_num.used_park_today, stats_num.park_closed_before_entry);
-        printf("Used the Family Waterslide: (Children | Adults | Elders):.....(%d | %d | %d)  \n", 
+        printf("Used the Family Waterslide: (Children | Adults | Elders):.....(%d | %d | %d) \n", 
         stats_num.children_used_Familywaterslide, stats_num.adults_used_Familywaterslide, stats_num.elders_used_Familywaterslide);
-        printf("Toboggan (Used | Quit on Line):...............................(%d | %d)       \n",
+        printf("Toboggan (Used | Quit on Line):...............................(%d | %d)      \n",
         stats_num.used_Toboggan, stats_num.quit_Toboggan);
-        printf("Snackbar (Used | Quit on Line):...............................(%d | %d)       \n",
+        printf("Snackbar (Used | Quit on Line):...............................(%d | %d)      \n",
         stats_num.used_Snack_bar, stats_num.quit_Snack_bar);
-        printf("Waterpolo (Played | Didnt Play):..............................(%d | %d)       \n",
+        printf("Waterpolo (Played | Didnt Play):..............................(%d | %d)      \n",
         stats_num.played_waterpolo, stats_num.not_played_waterpolo);
-        printf("Signature book (Write | Read):................................(%d | %d)       \n",
+        printf("Signature book (Write | Read):................................(%d | %d)      \n",
         stats_num.signed_book, stats_num.read_book);
         printf("\n");
 
